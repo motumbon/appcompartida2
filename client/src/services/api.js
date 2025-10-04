@@ -48,6 +48,7 @@ export const usersAPI = {
   getAll: () => api.get('/users'),
   delete: (id) => api.delete(`/users/${id}`),
   search: (email) => api.get(`/users/search?email=${email}`),
+  autocomplete: (query) => api.get(`/users/autocomplete?query=${encodeURIComponent(query)}`),
   linkInstitution: (institutionId) => api.post('/users/institutions/link', { institutionId }),
   unlinkInstitution: (id) => api.delete(`/users/institutions/${id}`),
   getUserInstitutions: () => api.get('/users/institutions')

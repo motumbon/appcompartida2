@@ -67,44 +67,12 @@ const Contacts = () => {
       // Buscar después de 300ms de inactividad
       const timeout = setTimeout(async () => {
         try {
-          const suggestions = [];
+          // Buscar usuarios registrados en el sistema
+          const response = await usersAPI.autocomplete(value);
+          const users = response.data || [];
           
-          // Buscar en los contactos existentes primero
-          const localMatches = contacts.filter(c => 
-            c.isRegisteredUser && (
-              c.email.toLowerCase().includes(value.toLowerCase()) ||
-              c.name.toLowerCase().includes(value.toLowerCase())
-            )
-          );
-          
-          localMatches.forEach(c => {
-            if (c.userId) {
-              suggestions.push({
-                _id: c.userId._id || c.userId,
-                username: c.userId.username || c.name,
-                email: c.userId.email || c.email
-              });
-            }
-          });
-          
-          // Si parece un email completo, buscar también en la API
-          if (value.includes('@') && value.includes('.')) {
-            try {
-              const response = await usersAPI.search(value);
-              if (response.data.found && response.data.user) {
-                // Agregar solo si no está ya en las sugerencias
-                const exists = suggestions.find(s => s.email === response.data.user.email);
-                if (!exists) {
-                  suggestions.push(response.data.user);
-                }
-              }
-            } catch (error) {
-              // Ignorar errores de búsqueda en API
-            }
-          }
-          
-          setSuggestedUsers(suggestions);
-          setShowSuggestions(suggestions.length > 0);
+          setSuggestedUsers(users);
+          setShowSuggestions(users.length > 0);
         } catch (error) {
           console.error('Error al buscar usuarios:', error);
           setSuggestedUsers([]);

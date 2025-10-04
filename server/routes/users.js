@@ -53,6 +53,31 @@ router.get('/search', authenticateToken, async (req, res) => {
   }
 });
 
+// Buscar usuarios por nombre o email (autocompletado)
+router.get('/autocomplete', authenticateToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || query.length < 2) {
+      return res.json([]);
+    }
+
+    // Buscar usuarios que coincidan con el nombre o email
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .select('username email')
+    .limit(10);
+    
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al buscar usuarios', error: error.message });
+  }
+});
+
 // Vincular institución a usuario
 router.post('/institutions/link', authenticateToken, async (req, res) => {
   try {
