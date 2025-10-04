@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════════════════
+  INSTRUCCIONES PARA CONFIGURAR MONGODB ATLAS
+═══════════════════════════════════════════════════════════════
+
+📋 PASO 1: Copia tu Connection String de MongoDB Atlas
+
+Deberías tener algo como esto:
+mongodb+srv://admin:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+
+
+📋 PASO 2: Reemplaza <password> con tu contraseña real
+
+Ejemplo:
+Si tu contraseña es: MiPassword123
+Tu URL quedaría:
+mongodb+srv://admin:MiPassword123@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+
+
+📋 PASO 3: Agrega el nombre de la base de datos
+
+Agrega "/app-trabajo-terreno" después de ".net":
+mongodb+srv://admin:MiPassword123@cluster0.xxxxx.mongodb.net/app-trabajo-terreno?retryWrites=true&w=majority
+
+
+📋 PASO 4: Actualiza el archivo .env
+
+1. Abre el archivo .env en la raíz del proyecto
+2. Busca la línea que dice: MONGODB_URI=...
+3. Reemplázala con tu URL completa
+
+Ejemplo de cómo debe quedar tu archivo .env:
+
+PORT=5000
+MONGODB_URI=mongodb+srv://admin:MiPassword123@cluster0.xxxxx.mongodb.net/app-trabajo-terreno?retryWrites=true&w=majority
+JWT_SECRET=97969369761b47e1ec96541ae745e9477173f6cc85b90f3e82961b8
+NODE_ENV=development
+
+
+⚠️ IMPORTANTE:
+- NO compartas tu contraseña
+- NO subas el archivo .env a GitHub (ya está en .gitignore)
+- Si tu contraseña tiene caracteres especiales (@, #, %, etc.), 
+  debes codificarlos en URL. Usa: https://www.urlencoder.org/
+
+
+📋 PASO 5: Reinicia la aplicación
+
+En la terminal, presiona Ctrl+C para detener la app y luego:
+npm run dev
+
+
+✅ VERIFICACIÓN:
+
+Si todo está bien, deberías ver en la terminal:
+✅ MongoDB conectado exitosamente
+🚀 Servidor corriendo en puerto 5000
+
+Si ves errores:
+- Verifica que la contraseña sea correcta
+- Asegúrate de que no haya espacios extra
+- Revisa que agregaste el nombre de la base de datos
+
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,36 @@
+{
+  "name": "app-trabajo-terreno",
+  "version": "1.0.0",
+  "description": "Aplicación de gestión de contactos, actividades, tareas, reclamos y contratos",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "node server/index.js",
+    "install-all": "npm install && cd client && npm install",
+    "postinstall": "node setup.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5",
+    "googleapis": "^130.0.0",
+    "express-validator": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "concurrently": "^8.2.2"
+  }
+}
