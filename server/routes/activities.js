@@ -35,7 +35,13 @@ router.get('/', authenticateToken, async (req, res) => {
 // Crear actividad
 router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
-    const { subject, comment, sharedWith, institution, registerInCalendar, scheduledDate } = req.body;
+    const { subject, comment, institution, registerInCalendar, scheduledDate } = req.body;
+    
+    // Manejar sharedWith como array (viene como sharedWith[] desde FormData)
+    let sharedWith = req.body['sharedWith[]'] || req.body.sharedWith || [];
+    if (!Array.isArray(sharedWith)) {
+      sharedWith = [sharedWith];
+    }
 
     if (!subject) {
       return res.status(400).json({ message: 'El asunto es requerido' });
@@ -54,10 +60,10 @@ router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
       subject,
       comment,
       createdBy: req.user._id,
-      sharedWith: sharedWith || [],
-      institution,
-      registerInCalendar,
-      scheduledDate,
+      sharedWith: sharedWith.filter(id => id), // Filtrar valores vacíos
+      institution: institution || null,
+      registerInCalendar: registerInCalendar === 'true',
+      scheduledDate: scheduledDate || null,
       status: 'pendiente',
       attachments
     });

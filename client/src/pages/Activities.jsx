@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Calendar as CalendarIcon, Users, Building2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar as CalendarIcon, Users, Building2, Paperclip, Download, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
@@ -68,18 +69,28 @@ const Activities = () => {
     setLoading(true);
 
     try {
-      const dataToSend = {
-        ...formData,
-        sharedWith: formData.sharedWith.map(id => id),
-        institution: formData.institution || null,
-        scheduledDate: formData.scheduledDate || null
-      };
+      const formDataToSend = new FormData();
+      formDataToSend.append('subject', formData.subject);
+      formDataToSend.append('comment', formData.comment);
+      formDataToSend.append('institution', formData.institution || '');
+      formDataToSend.append('scheduledDate', formData.scheduledDate || '');
+      formDataToSend.append('registerInCalendar', formData.registerInCalendar);
+      
+      // Agregar usuarios compartidos
+      formData.sharedWith.forEach(userId => {
+        formDataToSend.append('sharedWith[]', userId);
+      });
+      
+      // Agregar archivos
+      selectedFiles.forEach(file => {
+        formDataToSend.append('attachments', file);
+      });
 
       if (editingActivity) {
-        await activitiesAPI.update(editingActivity._id, dataToSend);
+        await activitiesAPI.update(editingActivity._id, formDataToSend);
         toast.success('Actividad actualizada exitosamente');
       } else {
-        await activitiesAPI.create(dataToSend);
+        await activitiesAPI.create(formDataToSend);
         toast.success('Actividad creada exitosamente');
       }
       
@@ -120,14 +131,44 @@ const Activities = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingActivity(null);
+    setSelectedFiles([]);
     setFormData({
       subject: '',
       comment: '',
       sharedWith: [],
       institution: '',
       registerInCalendar: false,
-      scheduledDate: ''
+      scheduledDate: '',
+      attachments: []
     });
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + selectedFiles.length > 5) {
+      toast.error('Máximo 5 archivos permitidos');
+      return;
+    }
+    setSelectedFiles([...selectedFiles, ...files]);
+  };
+
+  const removeFile = (index) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
+  };
+
+  const downloadAttachment = async (activityId, filename, originalName) => {
+    try {
+      const response = await activitiesAPI.downloadAttachment(activityId, filename);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', originalName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast.error('Error al descargar archivo');
+    }
   };
 
   const handleSelectSlot = ({ start, end }) => {
@@ -163,10 +204,43 @@ const Activities = () => {
       resource: a
     }));
 
-  // Filtrar actividades según el modo de vista
-  const filteredActivities = viewMode === 'completed'
-    ? activities.filter(a => a.status === 'completada')
-    : activities.filter(a => a.status !== 'completada');
+  const { user } = useAuth();
+
+  // Filtrar actividades según el modo de vista y filtro de usuario
+  const getFilteredActivities = () => {
+    let filtered = viewMode === 'completed'
+      ? activities.filter(a => a.status === 'completada')
+      : activities.filter(a => a.status !== 'completada');
+
+    // Aplicar filtro de usuario
+    if (filterUser === 'mine') {
+      // Solo mis actividades no compartidas
+      filtered = filtered.filter(a => 
+        a.createdBy?._id === user?._id && 
+        (!a.sharedWith || a.sharedWith.length === 0)
+      );
+    } else if (filterUser !== 'all') {
+      // Actividades compartidas con un usuario específico
+      filtered = filtered.filter(a => 
+        a.sharedWith && a.sharedWith.some(u => u._id === filterUser)
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredActivities = getFilteredActivities();
+
+  // Determinar si una actividad fue compartida conmigo
+  const isSharedWithMe = (activity) => {
+    return activity.createdBy?._id !== user?._id && 
+           activity.sharedWith?.some(u => u._id === user?._id);
+  };
+
+  // Obtener color de fondo según si es compartida
+  const getActivityBgColor = (activity) => {
+    return isSharedWithMe(activity) ? 'bg-blue-50' : 'bg-white';
+  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -194,7 +268,7 @@ const Activities = () => {
       
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Actividades</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <div className="flex gap-2 bg-white rounded-lg shadow-sm p-1">
             <button
               onClick={() => setViewMode('list')}
@@ -215,6 +289,19 @@ const Activities = () => {
               Completadas
             </button>
           </div>
+          <select
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+            className="input text-sm min-w-[200px]"
+          >
+            <option value="all">Todas las actividades</option>
+            <option value="mine">Mis actividades</option>
+            {contacts.map((contact) => (
+              <option key={contact.userId._id} value={contact.userId._id}>
+                Compartidas con {contact.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => setShowModal(true)}
             className="btn btn-primary flex items-center gap-2"
@@ -235,10 +322,17 @@ const Activities = () => {
             </div>
           )}
           {filteredActivities.map((activity) => (
-            <div key={activity._id} className="bg-white rounded-lg shadow-md p-6">
+            <div key={activity._id} className={`${getActivityBgColor(activity)} rounded-lg shadow-md p-6 border-2 ${isSharedWithMe(activity) ? 'border-blue-300' : 'border-transparent'}`}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">{activity.subject}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-800">{activity.subject}</h3>
+                    {isSharedWithMe(activity) && (
+                      <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full">
+                        Compartida conmigo
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(activity.status)}`}>
                       {getStatusLabel(activity.status)}
@@ -302,6 +396,27 @@ const Activities = () => {
                       <span key={user._id} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
                         {user.username}
                       </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activity.attachments && activity.attachments.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <span className="font-semibold text-gray-600 text-sm flex items-center gap-2">
+                    <Paperclip size={16} />
+                    Archivos adjuntos:
+                  </span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {activity.attachments.map((file, index) => (
+                      <button
+                        key={index}
+                        onClick={() => downloadAttachment(activity._id, file.filename, file.originalName)}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm flex items-center gap-2"
+                      >
+                        <Download size={14} />
+                        {file.originalName}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -446,6 +561,38 @@ const Activities = () => {
                 <label htmlFor="registerInCalendar" className="text-sm text-gray-700 cursor-pointer">
                   Registrar actividad en el calendario
                 </label>
+              </div>
+
+              <div>
+                <label className="label flex items-center gap-2">
+                  <Paperclip size={16} />
+                  Adjuntar archivos (PDF, Imágenes, Office)
+                </label>
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  className="input"
+                />
+                <p className="text-sm text-gray-500 mt-1">Máximo 5 archivos, 10MB cada uno</p>
+                
+                {selectedFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                        <span className="text-sm text-gray-700">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">

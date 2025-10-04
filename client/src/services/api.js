@@ -73,9 +73,20 @@ export const contactsAPI = {
 // Activities API
 export const activitiesAPI = {
   getAll: () => api.get('/activities'),
-  create: (data) => api.post('/activities', data),
-  update: (id, data) => api.put(`/activities/${id}`, data),
-  delete: (id) => api.delete(`/activities/${id}`)
+  create: (data) => api.post('/activities', data, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  update: (id, data) => api.put(`/activities/${id}`, data, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  delete: (id) => api.delete(`/activities/${id}`),
+  downloadAttachment: (activityId, filename) => api.get(`/activities/${activityId}/attachments/${filename}`, {
+    responseType: 'blob'
+  })
 };
 
 // Tasks API
