@@ -41,6 +41,17 @@ const activitySchema = new mongoose.Schema({
     enum: ['pendiente', 'en_progreso', 'completada', 'cancelada'],
     default: 'pendiente'
   },
+  attachments: [{
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    path: String,
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

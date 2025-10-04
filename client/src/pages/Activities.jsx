@@ -17,14 +17,17 @@ const Activities = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'calendar', or 'completed'
+  const [filterUser, setFilterUser] = useState('all'); // 'all', 'mine', or userId
   const [formData, setFormData] = useState({
     subject: '',
     comment: '',
     sharedWith: [],
     institution: '',
     registerInCalendar: false,
-    scheduledDate: ''
+    scheduledDate: '',
+    attachments: []
   });
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

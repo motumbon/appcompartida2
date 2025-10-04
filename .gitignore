@@ -8,6 +8,7 @@ client/build/
 *.log
 .DS_Store
 uploads/
+server/uploads/
 *.apk
 .vscode/
 .idea/

@@ -1,6 +1,13 @@
 import express from 'express';
 import Activity from '../models/Activity.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { uploadActivityFiles } from '../middleware/upload.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -26,13 +33,22 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Crear actividad
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
     const { subject, comment, sharedWith, institution, registerInCalendar, scheduledDate } = req.body;
 
     if (!subject) {
       return res.status(400).json({ message: 'El asunto es requerido' });
     }
+
+    // Procesar archivos adjuntos
+    const attachments = req.files ? req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      path: file.path
+    })) : [];
 
     const activity = new Activity({
       subject,
@@ -42,7 +58,8 @@ router.post('/', authenticateToken, async (req, res) => {
       institution,
       registerInCalendar,
       scheduledDate,
-      status: 'pendiente'
+      status: 'pendiente',
+      attachments
     });
 
     // TODO: Implementar integración con Google Calendar si registerInCalendar es true
@@ -112,6 +129,15 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Actividad no encontrada' });
     }
 
+    // Eliminar archivos adjuntos
+    if (activity.attachments && activity.attachments.length > 0) {
+      activity.attachments.forEach(file => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+
     // TODO: Eliminar evento de Google Calendar si existe
     // if (activity.calendarEventId) {
     //   await deleteGoogleCalendarEvent(activity.calendarEventId);
@@ -120,6 +146,39 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Actividad eliminada exitosamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al eliminar actividad', error: error.message });
+  }
+});
+
+// Descargar archivo adjunto
+router.get('/:id/attachments/:filename', authenticateToken, async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    
+    const activity = await Activity.findOne({
+      _id: id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
+
+    if (!activity) {
+      return res.status(404).json({ message: 'Actividad no encontrada' });
+    }
+
+    const attachment = activity.attachments.find(a => a.filename === filename);
+    
+    if (!attachment) {
+      return res.status(404).json({ message: 'Archivo no encontrado' });
+    }
+
+    if (!fs.existsSync(attachment.path)) {
+      return res.status(404).json({ message: 'Archivo no existe en el servidor' });
+    }
+
+    res.download(attachment.path, attachment.originalName);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al descargar archivo', error: error.message });
   }
 });
 
