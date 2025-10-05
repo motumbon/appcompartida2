@@ -71,6 +71,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     console.log('Filas leídas:', data.length);
     if (data.length > 0) {
       console.log('Primera fila (ejemplo):', data[0]);
+      console.log('Columnas disponibles:', Object.keys(data[0]));
     }
 
     if (!data || data.length === 0) {
@@ -80,34 +81,61 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     // Mapear los datos a nuestro esquema
     // Las columnas pueden venir con diferentes nombres, intentamos detectarlas
     const items = data.map(row => {
-      // Buscar las columnas por nombre (case insensitive)
+      // Buscar las columnas por nombre (case insensitive y parcial)
       const getColumn = (possibleNames) => {
         for (const key in row) {
-          if (possibleNames.some(name => key.toLowerCase().includes(name.toLowerCase()))) {
-            return String(row[key] || '').trim();
+          const keyLower = key.toLowerCase().trim();
+          for (const name of possibleNames) {
+            if (keyLower === name.toLowerCase() || keyLower.includes(name.toLowerCase())) {
+              const value = row[key];
+              return value !== null && value !== undefined ? String(value).trim() : '';
+            }
           }
         }
         return '';
       };
 
-      return {
+      const mappedRow = {
         linea: getColumn(['linea', 'línea', 'line', 'sociedad']),
-        codigo: getColumn(['codigo', 'código', 'code', 'cod']),
-        material: getColumn(['material', 'producto', 'product', 'descripcion', 'descripción']),
-        observacion: getColumn(['observacion', 'observación', 'obs', 'observation', 'comentario']),
-        status: getColumn(['status', 'estado', 'state', 'stock'])
+        codigo: getColumn(['codigo', 'código', 'code']),
+        material: getColumn(['material', 'producto', 'product']),
+        observacion: getColumn(['observacion', 'observación', 'obs']),
+        status: getColumn(['status', 'estado'])
       };
-    }).filter(item => item.codigo || item.material); // Filtrar filas vacías
+
+      return mappedRow;
+    });
+
+    console.log('Items mapeados:', items.length);
+    if (items.length > 0) {
+      console.log('Primer item mapeado:', items[0]);
+    }
+
+    // Filtrar solo filas que tengan al menos algún dato significativo
+    const filteredItems = items.filter(item => 
+      item.codigo || item.material || item.linea || item.status
+    );
+
+    console.log('Items después de filtrar:', filteredItems.length);
+
+    if (filteredItems.length === 0) {
+      return res.status(400).json({ 
+        message: 'No se pudo detectar datos válidos en el Excel. Verifica que la hoja tenga las columnas: Linea, codigo, Material, Observacion, status',
+        columnas: data.length > 0 ? Object.keys(data[0]) : []
+      });
+    }
 
     // Eliminar el stock anterior
     await Stock.deleteMany({});
 
     // Crear nuevo stock
     const newStock = new Stock({
-      items,
+      items: filteredItems,
       uploadedBy: req.user._id,
       fileName: req.file.originalname
     });
+
+    console.log('Stock guardado con', filteredItems.length, 'items');
 
     await newStock.save();
     await newStock.populate('uploadedBy', 'username email name');
