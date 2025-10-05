@@ -116,10 +116,16 @@ router.get('/:id/attachments/:filename', authenticateToken, async (req, res) => 
 });
 
 // Actualizar actividad
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
     const { id } = req.params;
-    const { subject, comment, sharedWith, institution, status, scheduledDate } = req.body;
+    const { subject, comment, institution, status, scheduledDate, existingAttachments } = req.body;
+    
+    // Manejar sharedWith como array
+    let sharedWith = req.body['sharedWith[]'] || req.body.sharedWith || [];
+    if (!Array.isArray(sharedWith)) {
+      sharedWith = [sharedWith];
+    }
 
     const activity = await Activity.findOne({
       _id: id,
@@ -137,9 +143,39 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (activity.createdBy.toString() === req.user._id.toString()) {
       activity.subject = subject || activity.subject;
       activity.comment = comment || activity.comment;
-      activity.sharedWith = sharedWith !== undefined ? sharedWith : activity.sharedWith;
-      activity.institution = institution !== undefined ? institution : activity.institution;
-      activity.scheduledDate = scheduledDate !== undefined ? scheduledDate : activity.scheduledDate;
+      activity.sharedWith = sharedWith.filter(id => id);
+      activity.institution = institution || activity.institution;
+      activity.scheduledDate = scheduledDate || activity.scheduledDate;
+      
+      // Manejar archivos adjuntos
+      if (existingAttachments) {
+        try {
+          const keepFiles = JSON.parse(existingAttachments);
+          // Eliminar archivos que ya no están en la lista
+          const filesToDelete = activity.attachments.filter(a => !keepFiles.includes(a.filename));
+          filesToDelete.forEach(file => {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          });
+          // Mantener solo los archivos que están en la lista
+          activity.attachments = activity.attachments.filter(a => keepFiles.includes(a.filename));
+        } catch (e) {
+          console.error('Error procesando archivos existentes:', e);
+        }
+      }
+      
+      // Agregar nuevos archivos
+      if (req.files && req.files.length > 0) {
+        const newAttachments = req.files.map(file => ({
+          filename: file.filename,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.path
+        }));
+        activity.attachments = [...activity.attachments, ...newAttachments];
+      }
     }
 
     // Cualquier participante puede actualizar el estado

@@ -79,10 +79,15 @@ const Activities = () => {
         formDataToSend.append('sharedWith[]', userId);
       });
       
-      // Agregar archivos
+      // Agregar nuevos archivos
       selectedFiles.forEach(file => {
         formDataToSend.append('attachments', file);
       });
+      
+      // Si estamos editando, enviar archivos existentes que se mantienen
+      if (editingActivity && formData.attachments) {
+        formDataToSend.append('existingAttachments', JSON.stringify(formData.attachments.map(a => a.filename)));
+      }
 
       if (editingActivity) {
         await activitiesAPI.update(editingActivity._id, formDataToSend);
@@ -120,9 +125,17 @@ const Activities = () => {
       comment: activity.comment || '',
       sharedWith: activity.sharedWith.map(u => u._id) || [],
       institution: activity.institution?._id || '',
-      scheduledDate: activity.scheduledDate ? moment(activity.scheduledDate).format('YYYY-MM-DDTHH:mm') : ''
+      scheduledDate: activity.scheduledDate ? moment(activity.scheduledDate).format('YYYY-MM-DDTHH:mm') : '',
+      attachments: activity.attachments || []
     });
     setShowModal(true);
+  };
+
+  const removeExistingAttachment = (filename) => {
+    setFormData({
+      ...formData,
+      attachments: formData.attachments.filter(a => a.filename !== filename)
+    });
   };
 
   const handleCloseModal = () => {
@@ -168,12 +181,21 @@ const Activities = () => {
   };
 
   const handleSelectSlot = ({ start, end }) => {
+    // Capturar la hora actual si se hace click en una fecha sin hora específica
+    const now = new Date();
+    const selectedDate = new Date(start);
+    
+    // Si la fecha seleccionada no tiene hora específica, usar la hora actual
+    if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
+      selectedDate.setHours(now.getHours(), now.getMinutes());
+    }
+    
     setFormData({
       subject: '',
       comment: '',
       sharedWith: [],
       institution: '',
-      scheduledDate: moment(start).format('YYYY-MM-DDTHH:mm')
+      scheduledDate: moment(selectedDate).format('YYYY-MM-DDTHH:mm')
     });
     setShowModal(true);
   };
@@ -211,8 +233,25 @@ const Activities = () => {
     if (filterUser === 'mine') {
       // Solo mis actividades no compartidas
       filtered = filtered.filter(a => {
-        const isMyActivity = a.createdBy?._id?.toString() === user?._id?.toString() || a.createdBy?._id === user?._id;
+        // Normalizar IDs para comparación
+        const activityCreatorId = a.createdBy?._id || a.createdBy;
+        const currentUserId = user?._id || user?.id;
+        
+        // Verificar si es mi actividad
+        const isMyActivity = String(activityCreatorId) === String(currentUserId);
+        
+        // Verificar que no esté compartida con nadie
         const isNotShared = !a.sharedWith || a.sharedWith.length === 0;
+        
+        console.log('Filtro Mis Actividades:', {
+          activityId: a._id,
+          activityCreatorId,
+          currentUserId,
+          isMyActivity,
+          isNotShared,
+          sharedWithCount: a.sharedWith?.length || 0
+        });
+        
         return isMyActivity && isNotShared;
       });
     } else if (filterUser !== 'all') {
@@ -569,20 +608,46 @@ const Activities = () => {
                 />
                 <p className="text-sm text-gray-500 mt-1">Máximo 5 archivos, 10MB cada uno</p>
                 
+                {/* Archivos existentes (al editar) */}
+                {editingActivity && formData.attachments && formData.attachments.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Archivos actuales:</p>
+                    <div className="space-y-2">
+                      {formData.attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded border border-blue-200">
+                          <span className="text-sm text-gray-700">{file.originalName}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeExistingAttachment(file.filename)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Eliminar archivo"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Nuevos archivos a subir */}
                 {selectedFiles.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="mt-3">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Nuevos archivos:</p>
+                    <div className="space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
