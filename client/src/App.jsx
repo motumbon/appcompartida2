@@ -17,6 +17,7 @@ import Stock from './pages/Stock';
 import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminInstitutions from './pages/AdminInstitutions';
+import UserApprovals from './pages/UserApprovals';
 
 function App() {
   return (
@@ -136,6 +137,16 @@ function App() {
               <PrivateRoute adminOnly>
                 <Layout>
                   <AdminInstitutions />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/approvals"
+            element={
+              <PrivateRoute adminOnly>
+                <Layout>
+                  <UserApprovals />
                 </Layout>
               </PrivateRoute>
             }

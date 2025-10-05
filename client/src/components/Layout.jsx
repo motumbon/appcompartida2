@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Menu, X, LogOut, Users, Building2, UserCircle, 
-  Calendar, CheckSquare, AlertCircle, FileText, Home, Package 
+  Calendar, CheckSquare, AlertCircle, FileText, Home, Package, UserCheck
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -51,6 +51,7 @@ const Layout = ({ children }) => {
   const adminMenuItems = [
     { path: '/admin/users', label: 'Gestión de Usuarios', icon: Users },
     { path: '/admin/institutions', label: 'Gestión de Instituciones', icon: Building2 },
+    { path: '/admin/approvals', label: 'Aprobación de Usuarios', icon: UserCheck },
   ];
 
   const isActive = (path) => location.pathname === path;

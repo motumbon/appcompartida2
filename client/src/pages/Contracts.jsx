@@ -8,6 +8,7 @@ import moment from 'moment';
 const Contracts = () => {
   const [contract, setContract] = useState({ items: [], uploadedBy: null, uploadedAt: null, fileName: null });
   const [filteredData, setFilteredData] = useState([]);
+  const [selectedContract, setSelectedContract] = useState(null);
   const [selectedKam, setSelectedKam] = useState('');
   const [kamOptions, setKamOptions] = useState([]);
   const [clienteOptions, setClienteOptions] = useState([]);
@@ -261,6 +262,26 @@ const Contracts = () => {
     return Array.from(uniqueMap.values());
   };
 
+  // Función para manejar click en tabla resumida
+  const handleContractClick = (contract) => {
+    setSelectedContract(contract);
+  };
+
+  // Función para obtener datos detallados filtrados
+  const getDetailedData = () => {
+    if (!selectedContract) {
+      return filteredData;
+    }
+    
+    // Filtrar por los 4 campos del contrato seleccionado
+    return filteredData.filter(item => 
+      item.linea === selectedContract.linea &&
+      item.nomCliente === selectedContract.nomCliente &&
+      item.numPedido === selectedContract.numPedido &&
+      item.finValidez === selectedContract.finValidez
+    );
+  };
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -505,19 +526,31 @@ const Contracts = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {getUniqueContractsForSummary(filteredData).map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.linea}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.nomCliente}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.numPedido}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.finValidez}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(item)}`}>
-                          {getStatusLabel(item)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {getUniqueContractsForSummary(filteredData).map((item, index) => {
+                    const isSelected = selectedContract && 
+                      item.linea === selectedContract.linea &&
+                      item.nomCliente === selectedContract.nomCliente &&
+                      item.numPedido === selectedContract.numPedido &&
+                      item.finValidez === selectedContract.finValidez;
+                    
+                    return (
+                      <tr 
+                        key={index} 
+                        onClick={() => handleContractClick(item)}
+                        className={`cursor-pointer hover:bg-blue-50 transition-colors ${isSelected ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.linea}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.nomCliente}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.numPedido}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.finValidez}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(item)}`}>
+                            {getStatusLabel(item)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -546,9 +579,25 @@ const Contracts = () => {
 
           {/* Tabla Detallada */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-3">
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-3 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-white">Vista Detallada - Información Completa</h2>
+              {selectedContract && (
+                <button
+                  onClick={() => setSelectedContract(null)}
+                  className="flex items-center gap-2 px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-md text-sm transition-colors"
+                >
+                  <X size={16} />
+                  Ver todos
+                </button>
+              )}
             </div>
+            {selectedContract && (
+              <div className="bg-blue-50 border-b border-blue-200 px-6 py-2">
+                <p className="text-sm text-blue-900">
+                  <strong>Filtrado por:</strong> {selectedContract.nomCliente} - Pedido {selectedContract.numPedido}
+                </p>
+              </div>
+            )}
           <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
             <table className="w-full table-auto">
               <thead className="bg-gray-50 sticky top-0">
@@ -565,7 +614,7 @@ const Contracts = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredData.map((item, index) => (
+                {getDetailedData().map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-3 py-3 text-sm text-gray-700">{item.linea}</td>
                     <td className="px-3 py-3 text-sm text-gray-700">{item.cliente}</td>
@@ -605,7 +654,8 @@ const Contracts = () => {
           {filteredData.length > 0 && (
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
               <p className="text-sm text-gray-700">
-                Vista detallada: <span className="font-semibold">{filteredData.length}</span> de <span className="font-semibold">{contract.items.length}</span> contratos
+                Vista detallada: <span className="font-semibold">{getDetailedData().length}</span> ítems
+                {selectedContract && <span className="text-gray-500 ml-2">(filtrado por contrato seleccionado)</span>}
               </p>
             </div>
           )}

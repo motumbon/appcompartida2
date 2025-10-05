@@ -38,6 +38,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  approved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
   permissions: {
     activities: {
       type: Boolean,

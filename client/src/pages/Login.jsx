@@ -101,12 +101,6 @@ const Login = () => {
             </Link>
           </p>
         </div>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-700 font-semibold mb-2">Usuario de prueba:</p>
-          <p className="text-sm text-gray-600">Usuario: <span className="font-mono">administrador</span></p>
-          <p className="text-sm text-gray-600">Contraseña: <span className="font-mono">1234567</span></p>
-        </div>
       </div>
     </div>
   );

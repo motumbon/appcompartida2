@@ -40,7 +40,10 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
-  getCurrentUser: () => api.get('/auth/me')
+  getCurrentUser: () => api.get('/auth/me'),
+  getPendingUsers: () => api.get('/auth/pending-users'),
+  approveUser: (userId) => api.post(`/auth/approve-user/${userId}`),
+  rejectUser: (userId) => api.delete(`/auth/reject-user/${userId}`)
 };
 
 // Users API

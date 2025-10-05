@@ -13,6 +13,7 @@ const Register = () => {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -48,10 +49,17 @@ const Register = () => {
     const result = await register(formData);
 
     if (result.success) {
-      toast.success('¡Registro exitoso!');
-      setTimeout(() => {
-        navigate('/');
-      }, 1000);
+      if (result.pending) {
+        // Mostrar mensaje de pendiente de aprobación
+        setPendingApproval(true);
+        toast.success(result.message || 'Solicitud de registro enviada');
+      } else {
+        // Registro exitoso y aprobado (admin)
+        toast.success('¡Registro exitoso!');
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
+      }
     } else {
       toast.error(result.message);
     }
@@ -63,13 +71,39 @@ const Register = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center p-4">
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-            <UserPlus className="text-primary-600" size={32} />
+        {pendingApproval ? (
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-full mb-6">
+              <UserPlus className="text-yellow-600" size={40} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Solicitud Pendiente de Aprobación</h1>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <p className="text-gray-700 mb-4">
+                Tu solicitud de registro ha sido enviada exitosamente.
+              </p>
+              <p className="text-gray-700 mb-4">
+                Un administrador debe aprobar tu cuenta antes de que puedas iniciar sesión.
+              </p>
+              <p className="text-sm text-gray-600">
+                Recibirás una notificación una vez que tu cuenta sea aprobada.
+              </p>
+            </div>
+            <Link
+              to="/login"
+              className="inline-block px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-colors"
+            >
+              Volver al Inicio de Sesión
+            </Link>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Crear Cuenta</h1>
-          <p className="text-gray-600 mt-2">Regístrate para comenzar</p>
-        </div>
+        ) : (
+          <>
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
+                <UserPlus className="text-primary-600" size={32} />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-800">Crear Cuenta</h1>
+              <p className="text-gray-600 mt-2">Regístrate para comenzar</p>
+            </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -146,14 +180,16 @@ const Register = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            ¿Ya tienes una cuenta?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold">
-              Inicia sesión aquí
-            </Link>
-          </p>
-        </div>
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                ¿Ya tienes una cuenta?{' '}
+                <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold">
+                  Inicia sesión aquí
+                </Link>
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

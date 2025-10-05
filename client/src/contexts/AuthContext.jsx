@@ -35,6 +35,16 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
+      
+      // Verificar si está pendiente de aprobación
+      if (response.data.pending) {
+        return { 
+          success: false, 
+          pending: true,
+          message: response.data.message || 'Tu cuenta está pendiente de aprobación'
+        };
+      }
+      
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
@@ -45,6 +55,15 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      // Verificar si es error de aprobación pendiente
+      if (error.response?.status === 403 && error.response?.data?.pending) {
+        return { 
+          success: false, 
+          pending: true,
+          message: error.response.data.message || 'Tu cuenta está pendiente de aprobación'
+        };
+      }
+      
       return { 
         success: false, 
         message: error.response?.data?.message || 'Error al iniciar sesión' 
@@ -55,6 +74,17 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
+      
+      // Verificar si está pendiente de aprobación
+      if (response.data.pending) {
+        return { 
+          success: true, 
+          pending: true,
+          message: response.data.message 
+        };
+      }
+      
+      // Si no está pendiente, es un admin auto-aprobado
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
@@ -63,7 +93,7 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(user);
       
-      return { success: true };
+      return { success: true, pending: false };
     } catch (error) {
       const message = error.response?.data?.errors?.[0]?.msg || 
                      error.response?.data?.message || 
