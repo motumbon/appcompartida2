@@ -48,14 +48,33 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
 
     // Leer el archivo Excel desde el buffer
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
+    
+    // Buscar la hoja "INFORMACION" primero, si no existe usar la primera
+    let sheetName = workbook.SheetNames.find(name => 
+      name.toLowerCase().includes('informacion') || 
+      name.toLowerCase().includes('información')
+    );
+    
+    // Si no se encuentra "INFORMACION", usar la primera hoja
+    if (!sheetName) {
+      sheetName = workbook.SheetNames[0];
+    }
+    
+    console.log('Leyendo hoja:', sheetName);
+    console.log('Hojas disponibles:', workbook.SheetNames);
+    
     const sheet = workbook.Sheets[sheetName];
     
     // Convertir a JSON
     const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
+    console.log('Filas leídas:', data.length);
+    if (data.length > 0) {
+      console.log('Primera fila (ejemplo):', data[0]);
+    }
+
     if (!data || data.length === 0) {
-      return res.status(400).json({ message: 'El archivo Excel está vacío' });
+      return res.status(400).json({ message: 'La hoja de Excel está vacía o no tiene datos' });
     }
 
     // Mapear los datos a nuestro esquema
@@ -65,20 +84,20 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       const getColumn = (possibleNames) => {
         for (const key in row) {
           if (possibleNames.some(name => key.toLowerCase().includes(name.toLowerCase()))) {
-            return row[key];
+            return String(row[key] || '').trim();
           }
         }
         return '';
       };
 
       return {
-        linea: getColumn(['linea', 'línea', 'line']),
-        codigo: getColumn(['codigo', 'código', 'code']),
-        material: getColumn(['material', 'producto', 'product']),
-        observacion: getColumn(['observacion', 'observación', 'obs', 'observation']),
-        status: getColumn(['status', 'estado', 'state'])
+        linea: getColumn(['linea', 'línea', 'line', 'sociedad']),
+        codigo: getColumn(['codigo', 'código', 'code', 'cod']),
+        material: getColumn(['material', 'producto', 'product', 'descripcion', 'descripción']),
+        observacion: getColumn(['observacion', 'observación', 'obs', 'observation', 'comentario']),
+        status: getColumn(['status', 'estado', 'state', 'stock'])
       };
-    });
+    }).filter(item => item.codigo || item.material); // Filtrar filas vacías
 
     // Eliminar el stock anterior
     await Stock.deleteMany({});
