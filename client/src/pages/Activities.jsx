@@ -29,6 +29,10 @@ const Activities = () => {
   });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [scheduledDateOnly, setScheduledDateOnly] = useState('');
+  const [scheduledHour, setScheduledHour] = useState('');
+  const [scheduledMinute, setScheduledMinute] = useState('00');
+  const [scheduledPeriod, setScheduledPeriod] = useState('AM');
 
   useEffect(() => {
     loadActivities();
@@ -36,29 +40,24 @@ const Activities = () => {
     loadUserInstitutions();
   }, []);
 
-  // Monitorear scheduledDate y agregar hora automáticamente si falta
+  // Combinar fecha + hora + minutos cuando cambian
   useEffect(() => {
-    if (formData.scheduledDate) {
-      const value = formData.scheduledDate;
-      
-      // Si el valor es solo fecha (YYYY-MM-DD) o tiene hora 00:00
-      if (value.length === 10 || (value.length === 16 && value.endsWith('T00:00'))) {
-        const now = new Date();
-        const selectedDate = new Date(value.length === 10 ? value + 'T00:00' : value);
-        
-        // Solo agregar hora si es medianoche (hora no definida)
-        if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
-          selectedDate.setHours(now.getHours(), now.getMinutes());
-          const newValue = moment(selectedDate).format('YYYY-MM-DDTHH:mm');
-          
-          // Solo actualizar si el valor cambió para evitar loop infinito
-          if (newValue !== value) {
-            setFormData(prev => ({ ...prev, scheduledDate: newValue }));
-          }
-        }
+    if (scheduledDateOnly && scheduledHour && scheduledMinute !== null && scheduledPeriod) {
+      // Convertir hora AM/PM a formato 24h
+      let hour24 = parseInt(scheduledHour);
+      if (scheduledPeriod === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+      } else if (scheduledPeriod === 'AM' && hour24 === 12) {
+        hour24 = 0;
       }
+      
+      const dateTime = `${scheduledDateOnly}T${String(hour24).padStart(2, '0')}:${scheduledMinute}`;
+      setFormData(prev => ({ ...prev, scheduledDate: dateTime }));
+    } else if (!scheduledDateOnly) {
+      // Si se borra la fecha, borrar scheduledDate
+      setFormData(prev => ({ ...prev, scheduledDate: '' }));
     }
-  }, [formData.scheduledDate]);
+  }, [scheduledDateOnly, scheduledHour, scheduledMinute, scheduledPeriod]);
 
   const loadActivities = async () => {
     try {
@@ -152,6 +151,28 @@ const Activities = () => {
       scheduledDate: activity.scheduledDate ? moment(activity.scheduledDate).format('YYYY-MM-DDTHH:mm') : '',
       attachments: activity.attachments || []
     });
+    
+    // Separar fecha y hora si existe
+    if (activity.scheduledDate) {
+      const date = moment(activity.scheduledDate);
+      setScheduledDateOnly(date.format('YYYY-MM-DD'));
+      
+      // Convertir a formato 12h AM/PM
+      let hour = date.hours();
+      const period = hour >= 12 ? 'PM' : 'AM';
+      if (hour > 12) hour -= 12;
+      if (hour === 0) hour = 12;
+      
+      setScheduledHour(String(hour));
+      setScheduledMinute(date.format('mm'));
+      setScheduledPeriod(period);
+    } else {
+      setScheduledDateOnly('');
+      setScheduledHour('');
+      setScheduledMinute('00');
+      setScheduledPeriod('AM');
+    }
+    
     setShowModal(true);
   };
 
@@ -174,6 +195,10 @@ const Activities = () => {
       scheduledDate: '',
       attachments: []
     });
+    setScheduledDateOnly('');
+    setScheduledHour('');
+    setScheduledMinute('00');
+    setScheduledPeriod('AM');
   };
 
   const handleFileChange = (e) => {
@@ -205,21 +230,38 @@ const Activities = () => {
   };
 
   const handleSelectSlot = ({ start, end }) => {
-    // Capturar la hora actual si se hace click en una fecha sin hora específica
     const now = new Date();
     const selectedDate = new Date(start);
     
-    // Si la fecha seleccionada no tiene hora específica, usar la hora actual
-    if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
-      selectedDate.setHours(now.getHours(), now.getMinutes());
-    }
+    // Establecer fecha
+    setScheduledDateOnly(moment(selectedDate).format('YYYY-MM-DD'));
+    
+    // Establecer hora actual en formato 12h
+    let hour = now.getHours();
+    const period = hour >= 12 ? 'PM' : 'AM';
+    if (hour > 12) hour -= 12;
+    if (hour === 0) hour = 12;
+    
+    setScheduledHour(String(hour));
+    
+    // Redondear minutos al cuarto de hora más cercano
+    const minutes = now.getMinutes();
+    let roundedMinutes = '00';
+    if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
+    else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
+    else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
+    else if (minutes >= 52) roundedMinutes = '00';
+    
+    setScheduledMinute(roundedMinutes);
+    setScheduledPeriod(period);
     
     setFormData({
       subject: '',
       comment: '',
       sharedWith: [],
       institution: '',
-      scheduledDate: moment(selectedDate).format('YYYY-MM-DDTHH:mm')
+      scheduledDate: '',
+      attachments: []
     });
     setShowModal(true);
   };
@@ -610,15 +652,76 @@ const Activities = () => {
               <div>
                 <label className="label">Fecha programada (opcional)</label>
                 <input
-                  type="datetime-local"
-                  value={formData.scheduledDate}
-                  onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
-                  onBlur={(e) => {
-                    // Cuando el usuario termina de seleccionar (cierra el calendario)
-                    // el useEffect detectará y agregará la hora automáticamente
+                  type="date"
+                  value={scheduledDateOnly}
+                  onChange={(e) => {
+                    setScheduledDateOnly(e.target.value);
+                    // Si selecciona una fecha y no hay hora, establecer hora actual
+                    if (e.target.value && !scheduledHour) {
+                      const now = new Date();
+                      let hour = now.getHours();
+                      const period = hour >= 12 ? 'PM' : 'AM';
+                      if (hour > 12) hour -= 12;
+                      if (hour === 0) hour = 12;
+                      setScheduledHour(String(hour));
+                      setScheduledPeriod(period);
+                      
+                      // Redondear minutos
+                      const minutes = now.getMinutes();
+                      let roundedMinutes = '00';
+                      if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
+                      else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
+                      else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
+                      else if (minutes >= 52) roundedMinutes = '00';
+                      setScheduledMinute(roundedMinutes);
+                    }
                   }}
                   className="input"
                 />
+                {scheduledDateOnly && (
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="label text-sm">Hora *</label>
+                      <select
+                        value={scheduledHour}
+                        onChange={(e) => setScheduledHour(e.target.value)}
+                        required
+                        className="input text-sm"
+                      >
+                        <option value="">--</option>
+                        {[...Array(12)].map((_, i) => (
+                          <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label text-sm">Minutos *</label>
+                      <select
+                        value={scheduledMinute}
+                        onChange={(e) => setScheduledMinute(e.target.value)}
+                        required
+                        className="input text-sm"
+                      >
+                        <option value="00">00</option>
+                        <option value="15">15</option>
+                        <option value="30">30</option>
+                        <option value="45">45</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label text-sm">AM/PM *</label>
+                      <select
+                        value={scheduledPeriod}
+                        onChange={(e) => setScheduledPeriod(e.target.value)}
+                        required
+                        className="input text-sm"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mt-1">Las actividades con fecha aparecerán en el calendario</p>
               </div>
 
