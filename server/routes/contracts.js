@@ -133,6 +133,18 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       return res.status(400).json({ message: 'La hoja DDBB está vacía o no tiene datos' });
     }
 
+    // Función para convertir fecha de Excel a formato legible
+    const excelDateToJSDate = (serial) => {
+      if (!serial || isNaN(serial)) return '';
+      const utc_days = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      const year = date_info.getFullYear();
+      const month = String(date_info.getMonth() + 1).padStart(2, '0');
+      const day = String(date_info.getDate()).padStart(2, '0');
+      return `${day}-${month}-${year}`;
+    };
+
     // Mapear los datos
     const items = data.map(row => {
       const getColumn = (possibleNames) => {
@@ -148,6 +160,27 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
         return '';
       };
 
+      const getDateColumn = (possibleNames) => {
+        for (const key in row) {
+          const keyLower = key.toLowerCase().trim();
+          for (const name of possibleNames) {
+            if (keyLower === name.toLowerCase() || keyLower.includes(name.toLowerCase())) {
+              const value = row[key];
+              if (!value) return '';
+              
+              // Si es un número (fecha de Excel)
+              if (typeof value === 'number') {
+                return excelDateToJSDate(value);
+              }
+              
+              // Si ya es string, devolverlo tal cual
+              return String(value).trim();
+            }
+          }
+        }
+        return '';
+      };
+
       return {
         linea: getColumn(['linea', 'línea', 'line']),
         kamRepr: getColumn(['kam / repr', 'kam', 'repr', 'representante']),
@@ -156,8 +189,8 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
         numPedido: getColumn(['nº de pedido', 'num pedido', 'numero pedido', 'pedido']),
         material: getColumn(['material', 'codigo material', 'cod material']),
         denominacion: getColumn(['denominación', 'denominacion', 'descripcion', 'descripción']),
-        inicioValidez: getColumn(['inicio validez', 'inicio', 'fecha inicio']),
-        finValidez: getColumn(['fin de validez', 'fin validez', 'fin', 'fecha fin']),
+        inicioValidez: getDateColumn(['inicio validez', 'inicio', 'fecha inicio']),
+        finValidez: getDateColumn(['fin de validez', 'fin validez', 'fin', 'fecha fin']),
         tipoCtto: getColumn(['tipo ctto', 'tipo', 'tipo contrato'])
       };
     });

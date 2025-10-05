@@ -146,9 +146,13 @@ const Contracts = () => {
     if (!item.finValidez) return 'bg-gray-100 text-gray-800';
     
     const today = moment();
-    const endDate = moment(item.finValidez, ['DD-MM-YYYY', 'YYYY-MM-DD', 'DD/MM/YYYY'], true);
+    // Intentar múltiples formatos de fecha
+    const endDate = moment(item.finValidez, ['DD-MM-YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'], true);
     
-    if (!endDate.isValid()) return 'bg-gray-100 text-gray-800';
+    if (!endDate.isValid()) {
+      console.log('Fecha inválida:', item.finValidez);
+      return 'bg-gray-100 text-gray-800';
+    }
     
     const daysDiff = endDate.diff(today, 'days');
     
@@ -161,9 +165,13 @@ const Contracts = () => {
     if (!item.finValidez) return 'Sin fecha';
     
     const today = moment();
-    const endDate = moment(item.finValidez, ['DD-MM-YYYY', 'YYYY-MM-DD', 'DD/MM/YYYY'], true);
+    // Intentar múltiples formatos de fecha
+    const endDate = moment(item.finValidez, ['DD-MM-YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'], true);
     
-    if (!endDate.isValid()) return 'Fecha inválida';
+    if (!endDate.isValid()) {
+      console.log('Fecha no reconocida:', item.finValidez);
+      return 'Fecha inválida';
+    }
     
     const daysDiff = endDate.diff(today, 'days');
     
@@ -310,7 +318,7 @@ const Contracts = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Filtro principal KAM */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -356,34 +364,6 @@ const Contracts = () => {
             />
           </div>
 
-          {/* Filtro Material */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Material
-            </label>
-            <input
-              type="text"
-              value={filters.material || ''}
-              onChange={(e) => handleFilterChange('material', e.target.value)}
-              placeholder="Filtrar por material..."
-              className="input w-full"
-            />
-          </div>
-
-          {/* Filtro Tipo Contrato */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo Contrato
-            </label>
-            <input
-              type="text"
-              value={filters.tipoCtto || ''}
-              onChange={(e) => handleFilterChange('tipoCtto', e.target.value)}
-              placeholder="Filtrar por tipo..."
-              className="input w-full"
-            />
-          </div>
-
           {/* Filtro Línea */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,38 +401,38 @@ const Contracts = () => {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
+            <table className="w-full table-auto">
+              <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Línea</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">KAM</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Pedido</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Denominación</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicio</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fin</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '80px' }}>Línea</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '100px' }}>Cliente</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '200px' }}>Nombre Cliente</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '120px' }}>Nº Pedido</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '120px' }}>Material</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '250px' }}>Denominación</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '100px' }}>Inicio</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '100px' }}>Fin</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" style={{ minWidth: '150px' }}>Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredData.map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.linea}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.kamRepr}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.cliente}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.nomCliente}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.numPedido}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.material}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{item.denominacion}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.inicioValidez}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.finValidez}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{item.tipoCtto}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item)}`}>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.linea}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.cliente}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.nomCliente}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.numPedido}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.material}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">
+                      <div className="max-w-xs overflow-hidden text-ellipsis" title={item.denominacion}>
+                        {item.denominacion}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.inicioValidez}</td>
+                    <td className="px-3 py-3 text-sm text-gray-700">{item.finValidez}</td>
+                    <td className="px-3 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(item)}`}>
                         {getStatusLabel(item)}
                       </span>
                     </td>
