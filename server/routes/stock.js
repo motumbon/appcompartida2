@@ -65,8 +65,47 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     
     const sheet = workbook.Sheets[sheetName];
     
-    // Convertir a JSON
-    const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    // Convertir a JSON con headers detectados automáticamente
+    // Intentamos leer con diferentes configuraciones
+    let data = [];
+    let headers = [];
+    
+    // Primero intentamos leer normalmente
+    data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    
+    if (data.length > 0 && Object.keys(data[0])[0].includes('__EMPTY')) {
+      console.log('Detectadas columnas vacías, buscando encabezados...');
+      
+      // Si los headers son __EMPTY, significa que la primera fila está vacía
+      // Intentamos leer todo como array y buscar la fila de encabezados
+      const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      console.log('Total de filas:', allRows.length);
+      
+      // Buscar la fila que contiene los encabezados
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(10, allRows.length); i++) {
+        const row = allRows[i];
+        if (row && row.length > 0) {
+          // Buscar si esta fila contiene palabras clave como "codigo", "material", etc.
+          const rowString = row.join('|').toLowerCase();
+          if (rowString.includes('codigo') || rowString.includes('material') || rowString.includes('linea')) {
+            headerRowIndex = i;
+            headers = row.map(h => String(h || '').trim());
+            console.log('Encabezados encontrados en fila', i + 1, ':', headers);
+            break;
+          }
+        }
+      }
+      
+      if (headerRowIndex >= 0) {
+        // Leer desde la fila de encabezados
+        data = XLSX.utils.sheet_to_json(sheet, { 
+          range: headerRowIndex,
+          defval: '' 
+        });
+        console.log('Datos leídos desde fila de encabezados:', data.length);
+      }
+    }
 
     console.log('Filas leídas:', data.length);
     if (data.length > 0) {
