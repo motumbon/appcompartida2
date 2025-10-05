@@ -54,10 +54,16 @@ router.put('/:id/permissions', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const { isAdmin: makeAdmin, permissions } = req.body;
 
+    console.log('Actualizando permisos para usuario:', id);
+    console.log('Datos recibidos:', { makeAdmin, permissions });
+
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    console.log('Usuario encontrado:', user.username);
+    console.log('Permisos actuales:', user.permissions);
 
     // No permitir modificar al administrador principal
     if (user.username === 'administrador') {
@@ -66,6 +72,17 @@ router.put('/:id/permissions', authenticateToken, isAdmin, async (req, res) => {
 
     // Actualizar permisos
     if (permissions) {
+      // Asegurar que user.permissions existe
+      if (!user.permissions) {
+        user.permissions = {
+          activities: true,
+          tasks: true,
+          complaints: true,
+          contracts: true,
+          stock: true
+        };
+      }
+      
       user.permissions = {
         activities: permissions.activities !== undefined ? permissions.activities : user.permissions.activities,
         tasks: permissions.tasks !== undefined ? permissions.tasks : user.permissions.tasks,
@@ -73,18 +90,25 @@ router.put('/:id/permissions', authenticateToken, isAdmin, async (req, res) => {
         contracts: permissions.contracts !== undefined ? permissions.contracts : user.permissions.contracts,
         stock: permissions.stock !== undefined ? permissions.stock : user.permissions.stock
       };
+
+      console.log('Nuevos permisos:', user.permissions);
     }
 
     // Actualizar isAdmin
     if (makeAdmin !== undefined) {
+      console.log('Actualizando isAdmin a:', makeAdmin);
       user.isAdmin = makeAdmin;
     }
 
     await user.save();
+    console.log('Usuario guardado exitosamente');
     
     const updatedUser = await User.findById(id).select('-password');
+    console.log('Usuario actualizado:', updatedUser.permissions);
+    
     res.json({ message: 'Permisos actualizados exitosamente', user: updatedUser });
   } catch (error) {
+    console.error('Error al actualizar permisos:', error);
     res.status(500).json({ message: 'Error al actualizar permisos', error: error.message });
   }
 });

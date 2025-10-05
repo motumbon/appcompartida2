@@ -52,7 +52,14 @@ router.post('/register', [
         id: user._id,
         username: user.username,
         email: user.email,
-        isAdmin: user.isAdmin
+        isAdmin: user.isAdmin,
+        permissions: user.permissions || {
+          activities: true,
+          tasks: true,
+          complaints: true,
+          contracts: true,
+          stock: true
+        }
       }
     });
   } catch (error) {
@@ -99,7 +106,14 @@ router.post('/login', [
         id: user._id,
         username: user.username,
         email: user.email,
-        isAdmin: user.isAdmin
+        isAdmin: user.isAdmin,
+        permissions: user.permissions || {
+          activities: true,
+          tasks: true,
+          complaints: true,
+          contracts: true,
+          stock: true
+        }
       }
     });
   } catch (error) {
@@ -112,11 +126,18 @@ router.post('/login', [
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     res.json({
-      user: {
-        id: req.user._id,
-        username: req.user.username,
-        email: req.user.email,
-        isAdmin: req.user.isAdmin
+      id: req.user._id,
+      username: req.user.username,
+      email: req.user.email,
+      name: req.user.name,
+      profileImage: req.user.profileImage,
+      isAdmin: req.user.isAdmin,
+      permissions: req.user.permissions || {
+        activities: true,
+        tasks: true,
+        complaints: true,
+        contracts: true,
+        stock: true
       }
     });
   } catch (error) {

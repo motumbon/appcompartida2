@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -8,9 +8,18 @@ import {
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Refrescar permisos del usuario cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshUser();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
+  }, [refreshUser]);
 
   const handleLogout = () => {
     logout();
@@ -36,8 +45,19 @@ const Layout = ({ children }) => {
     if (isAdmin) return true;
     
     // Verificar permisos del usuario
-    return user?.permissions?.[item.permission] !== false;
+    const hasPermission = user?.permissions?.[item.permission] !== false;
+    
+    console.log(`Menú "${item.label}" (${item.permission}):`, {
+      permiso: user?.permissions?.[item.permission],
+      hasPermission
+    });
+    
+    return hasPermission;
   });
+
+  console.log('Usuario actual:', user?.username);
+  console.log('Permisos:', user?.permissions);
+  console.log('Items de menú mostrados:', menuItems.map(i => i.label));
 
   const adminMenuItems = [
     { path: '/admin/users', label: 'Gestión de Usuarios', icon: Users },

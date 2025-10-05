@@ -72,6 +72,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getCurrentUser();
+      const updatedUser = response.data;
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      
+      return updatedUser;
+    } catch (error) {
+      console.error('Error al refrescar usuario:', error);
+      // Si hay error de autenticación, cerrar sesión
+      if (error.response?.status === 401) {
+        logout();
+      }
+      return null;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -86,6 +105,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!token,
     isAdmin: user?.isAdmin || false
   };
