@@ -202,9 +202,9 @@ router.put('/change-password', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'Contraseña actual incorrecta' });
     }
 
-    // Hashear nueva contraseña
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    // Establecer nueva contraseña en texto plano
+    // El pre-save hook del modelo User la hasheará automáticamente
+    user.password = newPassword;
     await user.save();
 
     res.json({ message: 'Contraseña actualizada exitosamente' });
@@ -245,9 +245,9 @@ router.post('/:id/reset-password', authenticateToken, isAdmin, async (req, res) 
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Establecer contraseña predeterminada
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash('123abc', salt);
+    // Establecer contraseña predeterminada en texto plano
+    // El pre-save hook del modelo User la hasheará automáticamente
+    user.password = '123abc';
     await user.save();
 
     res.json({ message: 'Contraseña reseteada a "123abc"' });
