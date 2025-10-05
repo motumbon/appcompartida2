@@ -128,8 +128,8 @@ export const complaintsAPI = {
 
 // Contracts API
 export const contractsAPI = {
-  getAll: () => api.get('/contracts'),
-  upload: (file) => {
+  getContracts: () => api.get('/contracts'),
+  uploadExcel: (file) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/contracts/upload', formData, {
@@ -138,9 +138,7 @@ export const contractsAPI = {
       }
     });
   },
-  create: (data) => api.post('/contracts', data),
-  update: (id, data) => api.put(`/contracts/${id}`, data),
-  delete: (id) => api.delete(`/contracts/${id}`)
+  deleteContracts: () => api.delete('/contracts')
 };
 
 // Stock API

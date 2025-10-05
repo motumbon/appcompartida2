@@ -1,172 +1,192 @@
 import express from 'express';
 import multer from 'multer';
-import xlsx from 'xlsx';
+import XLSX from 'xlsx';
 import Contract from '../models/Contract.js';
-import { authenticateToken, isAdmin } from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Configurar multer para subir archivos
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// Configurar multer para archivos Excel en memoria
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /xls|xlsx/;
+    const extname = allowedTypes.test(file.originalname.toLowerCase().split('.').pop());
+    const mimetype = file.mimetype.includes('spreadsheet') || file.mimetype.includes('excel');
+    if (extname || mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos Excel (.xls, .xlsx)'));
+    }
+  }
+});
 
-// Obtener todos los contratos
+// Obtener contratos actual
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const contracts = await Contract.find()
-      .populate('institution', 'name')
-      .populate('uploadedBy', 'username email')
-      .sort({ createdAt: -1 });
+    const contract = await Contract.findOne()
+      .populate('uploadedBy', 'username email name')
+      .sort({ uploadedAt: -1 });
     
-    res.json(contracts);
+    if (!contract) {
+      return res.json({ items: [], uploadedBy: null, uploadedAt: null, fileName: null });
+    }
+    
+    res.json(contract);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener contratos', error: error.message });
   }
 });
 
-// Subir archivo Excel con contratos (solo admin)
-router.post('/upload', authenticateToken, isAdmin, upload.single('file'), async (req, res) => {
+// Subir archivo Excel con contratos
+router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No se proporcionó archivo' });
+      return res.status(400).json({ message: 'No se proporcionó ningún archivo' });
     }
 
-    // Leer el archivo Excel
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    
+    // Buscar la hoja "DDBB"
+    let sheetName = workbook.SheetNames.find(name => 
+      name.toUpperCase() === 'DDBB'
+    );
+    
+    if (!sheetName) {
+      return res.status(400).json({ 
+        message: 'No se encontró la hoja "DDBB" en el archivo Excel',
+        hojas: workbook.SheetNames 
+      });
+    }
+    
+    console.log('Leyendo hoja:', sheetName);
+    console.log('Hojas disponibles:', workbook.SheetNames);
+    
     const sheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(sheet);
-
-    const contractsCreated = [];
-    const errors = [];
-
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
+    
+    // Leer datos
+    let data = [];
+    data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    
+    // Si los headers son __EMPTY, buscar la fila de encabezados
+    if (data.length > 0 && Object.keys(data[0])[0].includes('__EMPTY')) {
+      console.log('Detectadas columnas vacías, buscando encabezados...');
       
-      try {
-        // Mapear columnas del Excel a campos del modelo
-        // Ajustar según la estructura del Excel
-        const contractData = {
-          contractNumber: row['Numero de Contrato'] || row['contractNumber'] || `CONTRACT-${Date.now()}-${i}`,
-          clientName: row['Cliente'] || row['clientName'] || row['Nombre Cliente'],
-          startDate: row['Fecha Inicio'] || row['startDate'],
-          endDate: row['Fecha Fin'] || row['endDate'],
-          amount: row['Monto'] || row['amount'] || 0,
-          status: row['Estado'] || row['status'] || 'activo',
-          description: row['Descripcion'] || row['description'] || '',
-          additionalData: row,
-          uploadedBy: req.user._id
-        };
-
-        // Validar datos requeridos
-        if (!contractData.clientName || !contractData.startDate || !contractData.endDate) {
-          errors.push({ row: i + 1, message: 'Faltan campos requeridos (Cliente, Fecha Inicio, Fecha Fin)' });
-          continue;
+      const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      console.log('Total de filas:', allRows.length);
+      
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(10, allRows.length); i++) {
+        const row = allRows[i];
+        if (row && row.length > 0) {
+          const rowString = row.join('|').toLowerCase();
+          if (rowString.includes('linea') || rowString.includes('kam') || rowString.includes('cliente')) {
+            headerRowIndex = i;
+            console.log('Encabezados encontrados en fila', i + 1);
+            break;
+          }
         }
-
-        // Verificar si ya existe un contrato con ese número
-        const existingContract = await Contract.findOne({ contractNumber: contractData.contractNumber });
-        
-        if (existingContract) {
-          // Actualizar contrato existente
-          Object.assign(existingContract, contractData);
-          await existingContract.save();
-          contractsCreated.push(existingContract);
-        } else {
-          // Crear nuevo contrato
-          const contract = new Contract(contractData);
-          await contract.save();
-          contractsCreated.push(contract);
-        }
-      } catch (error) {
-        errors.push({ row: i + 1, message: error.message });
+      }
+      
+      if (headerRowIndex >= 0) {
+        data = XLSX.utils.sheet_to_json(sheet, { 
+          range: headerRowIndex,
+          defval: '' 
+        });
       }
     }
 
-    res.json({
-      message: `${contractsCreated.length} contratos procesados exitosamente`,
-      contractsCreated: contractsCreated.length,
-      errors: errors.length > 0 ? errors : undefined
+    console.log('Filas leídas:', data.length);
+    if (data.length > 0) {
+      console.log('Primera fila (ejemplo):', data[0]);
+      console.log('Columnas disponibles:', Object.keys(data[0]));
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(400).json({ message: 'La hoja DDBB está vacía o no tiene datos' });
+    }
+
+    // Mapear los datos
+    const items = data.map(row => {
+      const getColumn = (possibleNames) => {
+        for (const key in row) {
+          const keyLower = key.toLowerCase().trim();
+          for (const name of possibleNames) {
+            if (keyLower === name.toLowerCase() || keyLower.includes(name.toLowerCase())) {
+              const value = row[key];
+              return value !== null && value !== undefined ? String(value).trim() : '';
+            }
+          }
+        }
+        return '';
+      };
+
+      return {
+        linea: getColumn(['linea', 'línea', 'line']),
+        kamRepr: getColumn(['kam / repr', 'kam', 'repr', 'representante']),
+        cliente: getColumn(['cliente', 'cod cliente', 'codigo cliente']),
+        nomCliente: getColumn(['nom_cliente', 'nom cliente', 'nombre cliente', 'nombre_cliente']),
+        numPedido: getColumn(['nº de pedido', 'num pedido', 'numero pedido', 'pedido']),
+        material: getColumn(['material', 'codigo material', 'cod material']),
+        denominacion: getColumn(['denominación', 'denominacion', 'descripcion', 'descripción']),
+        inicioValidez: getColumn(['inicio validez', 'inicio', 'fecha inicio']),
+        finValidez: getColumn(['fin de validez', 'fin validez', 'fin', 'fecha fin']),
+        tipoCtto: getColumn(['tipo ctto', 'tipo', 'tipo contrato'])
+      };
+    });
+
+    console.log('Items mapeados:', items.length);
+    if (items.length > 0) {
+      console.log('Primer item mapeado:', items[0]);
+    }
+
+    // Filtrar filas con datos significativos
+    const filteredItems = items.filter(item => 
+      item.cliente || item.nomCliente || item.numPedido || item.kamRepr
+    );
+
+    console.log('Items después de filtrar:', filteredItems.length);
+
+    if (filteredItems.length === 0) {
+      return res.status(400).json({ 
+        message: 'No se pudieron detectar datos válidos. Verifica que la hoja DDBB tenga las columnas correctas',
+        columnas: data.length > 0 ? Object.keys(data[0]) : []
+      });
+    }
+
+    // Eliminar contratos anteriores
+    await Contract.deleteMany({});
+
+    // Crear nuevo registro
+    const newContract = new Contract({
+      items: filteredItems,
+      uploadedBy: req.user._id,
+      fileName: req.file.originalname
+    });
+
+    console.log('Contratos guardados con', filteredItems.length, 'items');
+
+    await newContract.save();
+    await newContract.populate('uploadedBy', 'username email name');
+
+    res.status(201).json({ 
+      message: 'Contratos actualizados exitosamente', 
+      contract: newContract 
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error al procesar archivo Excel', error: error.message });
+    console.error('Error al procesar archivo:', error);
+    res.status(500).json({ message: 'Error al procesar el archivo Excel', error: error.message });
   }
 });
 
-// Crear contrato manualmente (solo admin)
-router.post('/', authenticateToken, isAdmin, async (req, res) => {
+// Eliminar todos los contratos
+router.delete('/', authenticateToken, async (req, res) => {
   try {
-    const { contractNumber, clientName, institution, startDate, endDate, amount, status, description } = req.body;
-
-    if (!contractNumber || !clientName || !startDate || !endDate) {
-      return res.status(400).json({ message: 'Número de contrato, cliente, fecha inicio y fecha fin son requeridos' });
-    }
-
-    const existingContract = await Contract.findOne({ contractNumber });
-    if (existingContract) {
-      return res.status(400).json({ message: 'Ya existe un contrato con ese número' });
-    }
-
-    const contract = new Contract({
-      contractNumber,
-      clientName,
-      institution,
-      startDate,
-      endDate,
-      amount,
-      status: status || 'activo',
-      description,
-      uploadedBy: req.user._id
-    });
-
-    await contract.save();
-    await contract.populate(['institution', 'uploadedBy']);
-
-    res.status(201).json({ message: 'Contrato creado exitosamente', contract });
+    await Contract.deleteMany({});
+    res.json({ message: 'Contratos eliminados exitosamente' });
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear contrato', error: error.message });
-  }
-});
-
-// Actualizar contrato (solo admin)
-router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { contractNumber, clientName, institution, startDate, endDate, amount, status, description } = req.body;
-
-    const contract = await Contract.findById(id);
-
-    if (!contract) {
-      return res.status(404).json({ message: 'Contrato no encontrado' });
-    }
-
-    contract.contractNumber = contractNumber || contract.contractNumber;
-    contract.clientName = clientName || contract.clientName;
-    contract.institution = institution !== undefined ? institution : contract.institution;
-    contract.startDate = startDate || contract.startDate;
-    contract.endDate = endDate || contract.endDate;
-    contract.amount = amount !== undefined ? amount : contract.amount;
-    contract.status = status || contract.status;
-    contract.description = description !== undefined ? description : contract.description;
-
-    await contract.save();
-    await contract.populate(['institution', 'uploadedBy']);
-
-    res.json({ message: 'Contrato actualizado exitosamente', contract });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar contrato', error: error.message });
-  }
-});
-
-// Eliminar contrato (solo admin)
-router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    await Contract.findByIdAndDelete(id);
-    res.json({ message: 'Contrato eliminado exitosamente' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al eliminar contrato', error: error.message });
+    res.status(500).json({ message: 'Error al eliminar contratos', error: error.message });
   }
 });
 

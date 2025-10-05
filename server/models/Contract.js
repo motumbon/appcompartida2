@@ -1,55 +1,62 @@
 import mongoose from 'mongoose';
 
+const contractItemSchema = new mongoose.Schema({
+  linea: {
+    type: String,
+    trim: true
+  },
+  kamRepr: {
+    type: String,
+    trim: true
+  },
+  cliente: {
+    type: String,
+    trim: true
+  },
+  nomCliente: {
+    type: String,
+    trim: true
+  },
+  numPedido: {
+    type: String,
+    trim: true
+  },
+  material: {
+    type: String,
+    trim: true
+  },
+  denominacion: {
+    type: String,
+    trim: true
+  },
+  inicioValidez: {
+    type: String,
+    trim: true
+  },
+  finValidez: {
+    type: String,
+    trim: true
+  },
+  tipoCtto: {
+    type: String,
+    trim: true
+  }
+});
+
 const contractSchema = new mongoose.Schema({
-  contractNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  clientName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  institution: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Institution',
-    default: null
-  },
-  startDate: {
-    type: Date,
-    required: true
-  },
-  endDate: {
-    type: Date,
-    required: true
-  },
-  amount: {
-    type: Number,
-    default: 0
-  },
-  status: {
-    type: String,
-    enum: ['activo', 'finalizado', 'cancelado', 'suspendido'],
-    default: 'activo'
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  additionalData: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
-  },
+  items: [contractItemSchema],
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  createdAt: {
+  uploadedAt: {
     type: Date,
     default: Date.now
+  },
+  fileName: {
+    type: String,
+    required: true
   }
 }, {
   timestamps: true
