@@ -25,15 +25,30 @@ const upload = multer({
 // Obtener contratos actual
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const contract = await Contract.findOne()
+    // Buscar el batch más reciente
+    const latestContract = await Contract.findOne()
       .populate('uploadedBy', 'username email name')
       .sort({ uploadedAt: -1 });
     
-    if (!contract) {
+    if (!latestContract) {
       return res.json({ items: [], uploadedBy: null, uploadedAt: null, fileName: null });
     }
     
-    res.json(contract);
+    // Obtener todos los chunks del mismo batch
+    const allChunks = await Contract.find({ batchId: latestContract.batchId })
+      .sort({ chunkIndex: 1 });
+    
+    // Combinar todos los items
+    const allItems = allChunks.reduce((acc, chunk) => {
+      return acc.concat(chunk.items);
+    }, []);
+    
+    res.json({
+      items: allItems,
+      uploadedBy: latestContract.uploadedBy,
+      uploadedAt: latestContract.uploadedAt,
+      fileName: latestContract.fileName
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener contratos', error: error.message });
   }
@@ -158,21 +173,48 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     // Eliminar contratos anteriores
     await Contract.deleteMany({});
 
-    // Crear nuevo registro
-    const newContract = new Contract({
-      items: filteredItems,
-      uploadedBy: req.user._id,
-      fileName: req.file.originalname
-    });
+    // Dividir items en chunks para evitar límite de 16MB de MongoDB
+    const CHUNK_SIZE = 1000; // 1000 items por chunk
+    const chunks = [];
+    for (let i = 0; i < filteredItems.length; i += CHUNK_SIZE) {
+      chunks.push(filteredItems.slice(i, i + CHUNK_SIZE));
+    }
 
-    console.log('Contratos guardados con', filteredItems.length, 'items');
+    console.log(`Dividiendo ${filteredItems.length} items en ${chunks.length} chunks`);
 
-    await newContract.save();
-    await newContract.populate('uploadedBy', 'username email name');
+    // Crear un batchId único para este upload
+    const batchId = `${Date.now()}-${req.user._id}`;
+
+    // Guardar cada chunk
+    const savedChunks = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = new Contract({
+        items: chunks[i],
+        uploadedBy: req.user._id,
+        fileName: req.file.originalname,
+        batchId: batchId,
+        chunkIndex: i,
+        totalChunks: chunks.length
+      });
+
+      await chunk.save();
+      savedChunks.push(chunk);
+      console.log(`Chunk ${i + 1}/${chunks.length} guardado con ${chunks[i].length} items`);
+    }
+
+    console.log('Todos los contratos guardados exitosamente');
+
+    // Poblar el primer chunk para la respuesta
+    await savedChunks[0].populate('uploadedBy', 'username email name');
 
     res.status(201).json({ 
       message: 'Contratos actualizados exitosamente', 
-      contract: newContract 
+      contract: {
+        items: filteredItems,
+        uploadedBy: savedChunks[0].uploadedBy,
+        uploadedAt: savedChunks[0].uploadedAt,
+        fileName: savedChunks[0].fileName
+      }
     });
   } catch (error) {
     console.error('Error al procesar archivo:', error);

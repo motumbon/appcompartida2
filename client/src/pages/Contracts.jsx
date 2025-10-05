@@ -12,6 +12,7 @@ const Contracts = () => {
   const [kamOptions, setKamOptions] = useState([]);
   const [filters, setFilters] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
     vigentes: 0,
@@ -59,8 +60,14 @@ const Contracts = () => {
     }
 
     setUploading(true);
+    setUploadProgress(0);
+    
     try {
-      await contractsAPI.uploadExcel(file);
+      await contractsAPI.uploadExcel(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      setUploadProgress(100);
       toast.success('Contratos actualizados exitosamente');
       loadContracts();
       e.target.value = '';
@@ -80,6 +87,7 @@ const Contracts = () => {
       e.target.value = '';
     } finally {
       setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -201,8 +209,27 @@ const Contracts = () => {
           </div>
         </div>
 
+        {/* Barra de progreso de carga */}
+        {uploading && (
+          <div className="bg-white border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-blue-900">Subiendo archivo...</p>
+              <p className="text-sm font-bold text-blue-600">{uploadProgress}%</p>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              {uploadProgress < 100 ? 'Procesando archivo Excel...' : 'Finalizando...'}
+            </p>
+          </div>
+        )}
+
         {/* Información de carga */}
-        {contract.uploadedBy && (
+        {contract.uploadedBy && !uploading && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <FileText className="text-blue-600" size={24} />

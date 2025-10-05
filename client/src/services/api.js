@@ -129,12 +129,18 @@ export const complaintsAPI = {
 // Contracts API
 export const contractsAPI = {
   getContracts: () => api.get('/contracts'),
-  uploadExcel: (file) => {
+  uploadExcel: (file, onUploadProgress) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/contracts/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        if (onUploadProgress) {
+          onUploadProgress(percentCompleted);
+        }
       }
     });
   },

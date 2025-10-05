@@ -57,6 +57,18 @@ const contractSchema = new mongoose.Schema({
   fileName: {
     type: String,
     required: true
+  },
+  batchId: {
+    type: String,
+    required: true
+  },
+  chunkIndex: {
+    type: Number,
+    default: 0
+  },
+  totalChunks: {
+    type: Number,
+    default: 1
   }
 }, {
   timestamps: true
