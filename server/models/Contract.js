@@ -39,7 +39,11 @@ const contractItemSchema = new mongoose.Schema({
   },
   tipoCtto: {
     type: String,
-    trim: true
+    default: ''
+  },
+  tipoPosicion: {
+    type: String,
+    default: ''
   }
 });
 

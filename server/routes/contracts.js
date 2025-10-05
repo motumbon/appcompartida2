@@ -191,7 +191,8 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
         denominacion: getColumn(['denominación', 'denominacion', 'descripcion', 'descripción']),
         inicioValidez: getDateColumn(['inicio validez', 'inicio', 'fecha inicio']),
         finValidez: getDateColumn(['fin de validez', 'fin validez', 'fin', 'fecha fin']),
-        tipoCtto: getColumn(['tipo ctto', 'tipo', 'tipo contrato'])
+        tipoCtto: getColumn(['tipo ctto', 'tipo', 'tipo contrato']),
+        tipoPosicion: getColumn(['tipo de posición', 'tipo de posicion', 'tipo posicion', 'tipo posición'])
       };
     });
 
@@ -200,12 +201,18 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       console.log('Primer item mapeado:', items[0]);
     }
 
-    // Filtrar filas con datos significativos
-    const filteredItems = items.filter(item => 
-      item.cliente || item.nomCliente || item.numPedido || item.kamRepr
-    );
+    // Filtrar filas con datos significativos y excluir ZKE1
+    const filteredItems = items.filter(item => {
+      // Excluir si tipoPosicion es ZKE1
+      if (item.tipoPosicion && item.tipoPosicion.toUpperCase() === 'ZKE1') {
+        return false;
+      }
+      // Incluir solo si tiene datos significativos
+      return item.cliente || item.nomCliente || item.numPedido || item.kamRepr;
+    });
 
     console.log('Items después de filtrar:', filteredItems.length);
+    console.log('Items excluidos (ZKE1 y vacíos):', items.length - filteredItems.length);
 
     if (filteredItems.length === 0) {
       return res.status(400).json({ 

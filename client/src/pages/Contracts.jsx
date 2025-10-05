@@ -10,7 +10,9 @@ const Contracts = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [selectedKam, setSelectedKam] = useState('');
   const [kamOptions, setKamOptions] = useState([]);
+  const [clienteOptions, setClienteOptions] = useState([]);
   const [filters, setFilters] = useState({});
+  const [statusFilter, setStatusFilter] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [stats, setStats] = useState({
@@ -27,7 +29,27 @@ const Contracts = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [contract.items, selectedKam, filters]);
+  }, [contract.items, selectedKam, filters, statusFilter]);
+
+  useEffect(() => {
+    // Actualizar opciones de clientes cuando cambia el KAM
+    if (selectedKam && contract.items.length > 0) {
+      const clientesDeKam = contract.items
+        .filter(item => item.kamRepr === selectedKam)
+        .map(item => item.nomCliente)
+        .filter(Boolean);
+      const uniqueClientes = [...new Set(clientesDeKam)].sort();
+      setClienteOptions(uniqueClientes);
+    } else if (contract.items.length > 0) {
+      const todosClientes = contract.items
+        .map(item => item.nomCliente)
+        .filter(Boolean);
+      const uniqueClientes = [...new Set(todosClientes)].sort();
+      setClienteOptions(uniqueClientes);
+    } else {
+      setClienteOptions([]);
+    }
+  }, [selectedKam, contract.items]);
 
   const loadContracts = async () => {
     try {
@@ -107,6 +129,24 @@ const Contracts = () => {
         );
       }
     });
+
+    // Filtro por estado (vigente, próximo a vencer, vencido)
+    if (statusFilter) {
+      const today = moment();
+      filtered = filtered.filter(item => {
+        if (!item.finValidez) return statusFilter === 'sin-fecha';
+        
+        const endDate = moment(item.finValidez, ['DD-MM-YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'], true);
+        if (!endDate.isValid()) return statusFilter === 'sin-fecha';
+        
+        const daysDiff = endDate.diff(today, 'days');
+        
+        if (statusFilter === 'vigentes') return daysDiff > 30;
+        if (statusFilter === 'proxVencer') return daysDiff >= 0 && daysDiff <= 30;
+        if (statusFilter === 'vencidos') return daysDiff < 0;
+        return true;
+      });
+    }
 
     setFilteredData(filtered);
     calculateStats(filtered);
@@ -190,6 +230,7 @@ const Contracts = () => {
   const clearFilters = () => {
     setFilters({});
     setSelectedKam('');
+    setStatusFilter('');
   };
 
   return (
@@ -260,7 +301,10 @@ const Contracts = () => {
       {/* Estadísticas */}
       {filteredData.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+          <div 
+            onClick={() => setStatusFilter(statusFilter === '' ? '' : '')}
+            className={`bg-white rounded-lg shadow p-4 border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow ${statusFilter === '' ? 'ring-2 ring-blue-500' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total</p>
@@ -270,7 +314,10 @@ const Contracts = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'vigentes' ? '' : 'vigentes')}
+            className={`bg-white rounded-lg shadow p-4 border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow ${statusFilter === 'vigentes' ? 'ring-2 ring-green-500' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Vigentes</p>
@@ -280,7 +327,10 @@ const Contracts = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'proxVencer' ? '' : 'proxVencer')}
+            className={`bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow ${statusFilter === 'proxVencer' ? 'ring-2 ring-yellow-500' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Próximos a Vencer</p>
@@ -290,7 +340,10 @@ const Contracts = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+          <div 
+            onClick={() => setStatusFilter(statusFilter === 'vencidos' ? '' : 'vencidos')}
+            className={`bg-white rounded-lg shadow p-4 border-l-4 border-red-500 cursor-pointer hover:shadow-lg transition-shadow ${statusFilter === 'vencidos' ? 'ring-2 ring-red-500' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Vencidos</p>
@@ -336,30 +389,33 @@ const Contracts = () => {
             </select>
           </div>
 
-          {/* Filtro Cliente */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cliente
-            </label>
-            <input
-              type="text"
-              value={filters.cliente || ''}
-              onChange={(e) => handleFilterChange('cliente', e.target.value)}
-              placeholder="Filtrar por cliente..."
-              className="input w-full"
-            />
-          </div>
-
-          {/* Filtro Nombre Cliente */}
+          {/* Filtro Nombre Cliente (Dropdown) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nombre Cliente
             </label>
-            <input
-              type="text"
+            <select
               value={filters.nomCliente || ''}
               onChange={(e) => handleFilterChange('nomCliente', e.target.value)}
-              placeholder="Filtrar por nombre..."
+              className="input w-full"
+            >
+              <option value="">Todos los clientes</option>
+              {clienteOptions.map(cliente => (
+                <option key={cliente} value={cliente}>{cliente}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro Material (filtra por Denominación) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Material
+            </label>
+            <input
+              type="text"
+              value={filters.denominacion || ''}
+              onChange={(e) => handleFilterChange('denominacion', e.target.value)}
+              placeholder="Filtrar por material..."
               className="input w-full"
             />
           </div>
