@@ -34,7 +34,7 @@ const activitySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pendiente', 'en_progreso', 'completada', 'cancelada'],
+    enum: ['pendiente', 'completada'],
     default: 'pendiente'
   },
   attachments: [{

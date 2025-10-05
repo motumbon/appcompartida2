@@ -17,8 +17,9 @@ const Activities = () => {
   const [userInstitutions, setUserInstitutions] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
-  const [viewMode, setViewMode] = useState('list'); // 'list', 'calendar', or 'completed'
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'calendar', 'pending', or 'completed'
   const [filterUser, setFilterUser] = useState('all'); // 'all', 'mine', or userId
+  const [filterInstitution, setFilterInstitution] = useState('all'); // 'all' or institutionId
   const [formData, setFormData] = useState({
     subject: '',
     comment: '',
@@ -289,11 +290,20 @@ const Activities = () => {
 
   const { user } = useAuth();
 
-  // Filtrar actividades según el modo de vista y filtro de usuario
+  // Filtrar actividades según el modo de vista y filtros
   const getFilteredActivities = () => {
-    let filtered = viewMode === 'completed'
-      ? activities.filter(a => a.status === 'completada')
-      : activities.filter(a => a.status !== 'completada');
+    let filtered = activities;
+
+    // Aplicar filtro de vista
+    if (viewMode === 'completed') {
+      filtered = filtered.filter(a => a.status === 'completada');
+    } else if (viewMode === 'pending') {
+      filtered = filtered.filter(a => a.status === 'pendiente');
+    } else if (viewMode === 'list') {
+      // Lista muestra todas menos completadas
+      filtered = filtered.filter(a => a.status !== 'completada');
+    }
+    // calendar muestra todas las que tienen fecha
 
     // Aplicar filtro de usuario
     if (filterUser === 'mine') {
@@ -309,21 +319,19 @@ const Activities = () => {
         // Verificar que no esté compartida con nadie
         const isNotShared = !a.sharedWith || a.sharedWith.length === 0;
         
-        console.log('Filtro Mis Actividades:', {
-          activityId: a._id,
-          activityCreatorId,
-          currentUserId,
-          isMyActivity,
-          isNotShared,
-          sharedWithCount: a.sharedWith?.length || 0
-        });
-        
         return isMyActivity && isNotShared;
       });
     } else if (filterUser !== 'all') {
       // Actividades compartidas con un usuario específico
       filtered = filtered.filter(a => 
         a.sharedWith && a.sharedWith.some(u => u._id === filterUser)
+      );
+    }
+
+    // Aplicar filtro de institución
+    if (filterInstitution !== 'all') {
+      filtered = filtered.filter(a => 
+        a.institution && a.institution._id === filterInstitution
       );
     }
 
@@ -348,9 +356,7 @@ const Activities = () => {
   const getStatusColor = (status) => {
     const colors = {
       pendiente: 'bg-yellow-100 text-yellow-800',
-      en_progreso: 'bg-blue-100 text-blue-800',
-      completada: 'bg-green-100 text-green-800',
-      cancelada: 'bg-red-100 text-red-800'
+      completada: 'bg-green-100 text-green-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -358,9 +364,7 @@ const Activities = () => {
   const getStatusLabel = (status) => {
     const labels = {
       pendiente: 'Pendiente',
-      en_progreso: 'En Progreso',
-      completada: 'Completada',
-      cancelada: 'Cancelada'
+      completada: 'Completada'
     };
     return labels[status] || status;
   };
@@ -380,6 +384,12 @@ const Activities = () => {
               Lista
             </button>
             <button
+              onClick={() => setViewMode('pending')}
+              className={`px-4 py-2 rounded ${viewMode === 'pending' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
+            >
+              Pendientes
+            </button>
+            <button
               onClick={() => setViewMode('calendar')}
               className={`px-4 py-2 rounded ${viewMode === 'calendar' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
             >
@@ -397,11 +407,23 @@ const Activities = () => {
             onChange={(e) => setFilterUser(e.target.value)}
             className="input text-sm min-w-[200px]"
           >
-            <option value="all">Todas las actividades</option>
+            <option value="all">Todos los usuarios</option>
             <option value="mine">Mis actividades</option>
             {contacts.map((contact) => (
               <option key={contact.userId._id} value={contact.userId._id}>
                 Compartidas con {contact.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterInstitution}
+            onChange={(e) => setFilterInstitution(e.target.value)}
+            className="input text-sm min-w-[200px]"
+          >
+            <option value="all">Todas las instituciones</option>
+            {userInstitutions.map((inst) => (
+              <option key={inst._id} value={inst._id}>
+                {inst.name}
               </option>
             ))}
           </select>
@@ -416,8 +438,14 @@ const Activities = () => {
       </div>
 
       {/* List View */}
-      {(viewMode === 'list' || viewMode === 'completed') && (
+      {(viewMode === 'list' || viewMode === 'pending' || viewMode === 'completed') && (
         <div className="space-y-4">
+          {viewMode === 'pending' && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="text-lg font-semibold text-yellow-800">Actividades Pendientes</h3>
+              <p className="text-sm text-yellow-600">Mostrando {filteredActivities.length} actividades pendientes</p>
+            </div>
+          )}
           {viewMode === 'completed' && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <h3 className="text-lg font-semibold text-green-800">Actividades Completadas</h3>
@@ -539,9 +567,7 @@ const Activities = () => {
                   className="input text-sm"
                 >
                   <option value="pendiente">Pendiente</option>
-                  <option value="en_progreso">En Progreso</option>
                   <option value="completada">Completada</option>
-                  <option value="cancelada">Cancelada</option>
                 </select>
               </div>
             </div>
@@ -550,8 +576,10 @@ const Activities = () => {
           {filteredActivities.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">
-              {viewMode === 'completed' ? 'No hay actividades completadas' : 'No hay actividades registradas'}
-            </p>
+                {viewMode === 'completed' && 'No hay actividades completadas'}
+                {viewMode === 'pending' && 'No hay actividades pendientes'}
+                {viewMode === 'list' && 'No hay actividades registradas'}
+              </p>
             </div>
           )}
         </div>
