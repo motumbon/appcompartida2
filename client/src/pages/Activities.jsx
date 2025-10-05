@@ -12,6 +12,7 @@ moment.locale('es');
 const localizer = momentLocalizer(moment);
 
 const Activities = () => {
+  const { user } = useAuth();
   const [activities, setActivities] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [userInstitutions, setUserInstitutions] = useState([]);
@@ -288,8 +289,6 @@ const Activities = () => {
       resource: a
     }));
 
-  const { user } = useAuth();
-
   // Filtrar actividades según el modo de vista y filtros
   const getFilteredActivities = () => {
     let filtered = activities;
@@ -377,6 +376,7 @@ const Activities = () => {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-gray-800">Actividades</h1>
           <button
+            type="button"
             onClick={() => setShowModal(true)}
             className="btn btn-primary flex items-center gap-2"
           >
@@ -390,24 +390,28 @@ const Activities = () => {
             {/* Vista */}
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               <button
+                type="button"
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-1.5 text-sm rounded ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
               >
                 Lista
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('pending')}
                 className={`px-3 py-1.5 text-sm rounded ${viewMode === 'pending' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
               >
                 Pendientes
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('calendar')}
                 className={`px-3 py-1.5 text-sm rounded ${viewMode === 'calendar' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
               >
                 Calendario
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('completed')}
                 className={`px-3 py-1.5 text-sm rounded ${viewMode === 'completed' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
               >
@@ -488,6 +492,7 @@ const Activities = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => handleEdit(activity)}
                     className="text-blue-600 hover:text-blue-800"
                     title="Editar"
@@ -495,6 +500,7 @@ const Activities = () => {
                     <Edit2 size={20} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDelete(activity._id)}
                     className="text-red-600 hover:text-red-800"
                     title="Eliminar"
@@ -557,6 +563,7 @@ const Activities = () => {
                   <div className="flex flex-wrap gap-2 mt-2">
                     {activity.attachments.map((file, index) => (
                       <button
+                        type="button"
                         key={index}
                         onClick={() => downloadAttachment(activity._id, file.filename, file.originalName)}
                         className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm flex items-center gap-2"

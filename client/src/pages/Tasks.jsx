@@ -212,6 +212,7 @@ const Tasks = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Tareas</h1>
         <button
+          type="button"
           onClick={() => setShowModal(true)}
           className="btn btn-primary flex items-center gap-2"
         >
@@ -223,6 +224,7 @@ const Tasks = () => {
       {/* View Mode Toggle */}
       <div className="mb-6 flex gap-2 bg-white rounded-lg shadow-sm p-1 inline-flex">
         <button
+          type="button"
           onClick={() => setViewMode('pending')}
           className={`px-4 py-2 rounded font-medium transition-colors ${
             viewMode === 'pending'
@@ -233,6 +235,7 @@ const Tasks = () => {
           Pendientes ({tasks.filter(t => t.status === 'pendiente').length})
         </button>
         <button
+          type="button"
           onClick={() => setViewMode('completed')}
           className={`px-4 py-2 rounded font-medium transition-colors ${
             viewMode === 'completed'
@@ -253,6 +256,7 @@ const Tasks = () => {
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1 flex items-start gap-3">
                 <button
+                  type="button"
                   onClick={() => handleToggleComplete(task)}
                   disabled={!canEditTask(task)}
                   className={`mt-1 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
@@ -289,6 +293,7 @@ const Tasks = () => {
               <div className="flex gap-2">
                 {canEditTask(task) && (
                   <button
+                    type="button"
                     onClick={() => handleEdit(task)}
                     className="text-blue-600 hover:text-blue-800"
                     title="Editar"
@@ -297,6 +302,7 @@ const Tasks = () => {
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => handleDelete(task._id)}
                   className="text-red-600 hover:text-red-800"
                   title="Eliminar"
@@ -328,6 +334,7 @@ const Tasks = () => {
                   {task.checklist.map((item, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleToggleCheckItem(task, index)}
                         disabled={!canEditTask(task)}
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
