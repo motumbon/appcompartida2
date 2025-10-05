@@ -60,7 +60,18 @@ const Stock = () => {
       e.target.value = '';
     } catch (error) {
       console.error('Error al subir archivo:', error);
-      toast.error(error.response?.data?.message || 'Error al subir archivo');
+      console.error('Respuesta del servidor:', error.response?.data);
+      
+      const errorData = error.response?.data;
+      let errorMessage = errorData?.message || 'Error al subir archivo';
+      
+      // Si hay columnas detectadas, mostrarlas
+      if (errorData?.columnas) {
+        console.error('Columnas detectadas en el Excel:', errorData.columnas);
+        errorMessage += '\n\nColumnas detectadas: ' + errorData.columnas.join(', ');
+      }
+      
+      toast.error(errorMessage, { autoClose: 10000 });
       e.target.value = '';
     } finally {
       setUploading(false);
