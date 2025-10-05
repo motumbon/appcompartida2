@@ -135,7 +135,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       };
 
       const mappedRow = {
-        linea: getColumn(['linea', 'línea', 'line', 'sociedad']),
+        linea: getColumn(['linea', 'línea', 'line']), // Removido 'sociedad'
         codigo: getColumn(['codigo', 'código', 'code']),
         material: getColumn(['material', 'producto', 'product']),
         observacion: getColumn(['observacion', 'observación', 'obs']),
