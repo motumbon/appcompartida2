@@ -591,15 +591,24 @@ const Activities = () => {
                   onChange={(e) => {
                     let value = e.target.value;
                     
-                    // Si se selecciona una fecha sin hora específica, agregar hora actual
-                    if (value && value.length === 16) {
-                      // El valor tiene formato YYYY-MM-DDTHH:mm (16 caracteres)
-                      // Si la hora es 00:00, usar la hora actual
-                      const selectedDate = new Date(value);
-                      if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
-                        const now = new Date();
+                    // Si se selecciona solo la fecha (formato YYYY-MM-DD, 10 caracteres)
+                    // o si tiene hora pero es 00:00, agregar hora actual
+                    if (value) {
+                      const now = new Date();
+                      
+                      // Si el valor es solo fecha (YYYY-MM-DD)
+                      if (value.length === 10) {
+                        const selectedDate = new Date(value + 'T00:00');
                         selectedDate.setHours(now.getHours(), now.getMinutes());
                         value = moment(selectedDate).format('YYYY-MM-DDTHH:mm');
+                      } 
+                      // Si tiene fecha y hora completa pero es medianoche
+                      else if (value.length === 16) {
+                        const selectedDate = new Date(value);
+                        if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
+                          selectedDate.setHours(now.getHours(), now.getMinutes());
+                          value = moment(selectedDate).format('YYYY-MM-DDTHH:mm');
+                        }
                       }
                     }
                     
