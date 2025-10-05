@@ -450,7 +450,7 @@ const Contracts = () => {
         </div>
       </div>
 
-      {/* Tabla */}
+      {/* Tablas */}
       {contract.items.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <FileText className="mx-auto text-gray-400 mb-4" size={64} />
@@ -470,7 +470,67 @@ const Contracts = () => {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <>
+          {/* Tabla Resumida */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3">
+              <h2 className="text-lg font-semibold text-white">Vista Resumida - Seguimiento Rápido</h2>
+            </div>
+            <div className="overflow-x-auto" style={{ maxHeight: '400px' }}>
+              <table className="w-full table-auto">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Línea</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Nombre Cliente</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Nº Pedido</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Fin Validez</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredData.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">{item.linea}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{item.nomCliente}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{item.numPedido}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{item.finValidez}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(item)}`}>
+                          {getStatusLabel(item)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredData.length === 0 && contract.items.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-lg">No se encontraron contratos con los filtros aplicados</p>
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+
+            {filteredData.length > 0 && (
+              <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                <p className="text-sm text-gray-700">
+                  Vista resumida: <span className="font-semibold">{filteredData.length}</span> contratos
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla Detallada */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-3">
+              <h2 className="text-lg font-semibold text-white">Vista Detallada - Información Completa</h2>
+            </div>
           <div className="overflow-x-auto" style={{ maxHeight: '600px' }}>
             <table className="w-full table-auto">
               <thead className="bg-gray-50 sticky top-0">
@@ -527,11 +587,12 @@ const Contracts = () => {
           {filteredData.length > 0 && (
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
               <p className="text-sm text-gray-700">
-                Mostrando <span className="font-semibold">{filteredData.length}</span> de <span className="font-semibold">{contract.items.length}</span> contratos
+                Vista detallada: <span className="font-semibold">{filteredData.length}</span> de <span className="font-semibold">{contract.items.length}</span> contratos
               </p>
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
