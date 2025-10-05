@@ -588,7 +588,23 @@ const Activities = () => {
                 <input
                   type="datetime-local"
                   value={formData.scheduledDate}
-                  onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    
+                    // Si se selecciona una fecha sin hora específica, agregar hora actual
+                    if (value && value.length === 16) {
+                      // El valor tiene formato YYYY-MM-DDTHH:mm (16 caracteres)
+                      // Si la hora es 00:00, usar la hora actual
+                      const selectedDate = new Date(value);
+                      if (selectedDate.getHours() === 0 && selectedDate.getMinutes() === 0) {
+                        const now = new Date();
+                        selectedDate.setHours(now.getHours(), now.getMinutes());
+                        value = moment(selectedDate).format('YYYY-MM-DDTHH:mm');
+                      }
+                    }
+                    
+                    setFormData({ ...formData, scheduledDate: value });
+                  }}
                   className="input"
                 />
                 <p className="text-sm text-gray-500 mt-1">Las actividades con fecha aparecerán en el calendario</p>
