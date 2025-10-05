@@ -35,7 +35,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Crear actividad
 router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
-    const { subject, comment, institution, registerInCalendar, scheduledDate } = req.body;
+    const { subject, comment, institution, scheduledDate } = req.body;
     
     // Manejar sharedWith como array (viene como sharedWith[] desde FormData)
     let sharedWith = req.body['sharedWith[]'] || req.body.sharedWith || [];
@@ -62,14 +62,13 @@ router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
       createdBy: req.user._id,
       sharedWith: sharedWith.filter(id => id), // Filtrar valores vacíos
       institution: institution || null,
-      registerInCalendar: registerInCalendar === 'true',
       scheduledDate: scheduledDate || null,
       status: 'pendiente',
       attachments
     });
 
-    // TODO: Implementar integración con Google Calendar si registerInCalendar es true
-    // if (registerInCalendar && scheduledDate) {
+    // TODO: Implementar integración con Google Calendar si scheduledDate está definida
+    // if (scheduledDate) {
     //   const calendarEventId = await createGoogleCalendarEvent(activity);
     //   activity.calendarEventId = calendarEventId;
     // }

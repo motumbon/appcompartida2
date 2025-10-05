@@ -24,10 +24,6 @@ const activitySchema = new mongoose.Schema({
     ref: 'Institution',
     default: null
   },
-  registerInCalendar: {
-    type: Boolean,
-    default: false
-  },
   calendarEventId: {
     type: String,
     default: null

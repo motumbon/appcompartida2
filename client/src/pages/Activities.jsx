@@ -24,7 +24,6 @@ const Activities = () => {
     comment: '',
     sharedWith: [],
     institution: '',
-    registerInCalendar: false,
     scheduledDate: '',
     attachments: []
   });
@@ -74,7 +73,6 @@ const Activities = () => {
       formDataToSend.append('comment', formData.comment);
       formDataToSend.append('institution', formData.institution || '');
       formDataToSend.append('scheduledDate', formData.scheduledDate || '');
-      formDataToSend.append('registerInCalendar', formData.registerInCalendar);
       
       // Agregar usuarios compartidos
       formData.sharedWith.forEach(userId => {
@@ -122,7 +120,6 @@ const Activities = () => {
       comment: activity.comment || '',
       sharedWith: activity.sharedWith.map(u => u._id) || [],
       institution: activity.institution?._id || '',
-      registerInCalendar: activity.registerInCalendar,
       scheduledDate: activity.scheduledDate ? moment(activity.scheduledDate).format('YYYY-MM-DDTHH:mm') : ''
     });
     setShowModal(true);
@@ -137,7 +134,6 @@ const Activities = () => {
       comment: '',
       sharedWith: [],
       institution: '',
-      registerInCalendar: false,
       scheduledDate: '',
       attachments: []
     });
@@ -177,7 +173,6 @@ const Activities = () => {
       comment: '',
       sharedWith: [],
       institution: '',
-      registerInCalendar: true,
       scheduledDate: moment(start).format('YYYY-MM-DDTHH:mm')
     });
     setShowModal(true);
@@ -215,10 +210,11 @@ const Activities = () => {
     // Aplicar filtro de usuario
     if (filterUser === 'mine') {
       // Solo mis actividades no compartidas
-      filtered = filtered.filter(a => 
-        a.createdBy?._id === user?._id && 
-        (!a.sharedWith || a.sharedWith.length === 0)
-      );
+      filtered = filtered.filter(a => {
+        const isMyActivity = a.createdBy?._id?.toString() === user?._id?.toString() || a.createdBy?._id === user?._id;
+        const isNotShared = !a.sharedWith || a.sharedWith.length === 0;
+        return isMyActivity && isNotShared;
+      });
     } else if (filterUser !== 'all') {
       // Actividades compartidas con un usuario específico
       filtered = filtered.filter(a => 
@@ -233,8 +229,10 @@ const Activities = () => {
 
   // Determinar si una actividad fue compartida conmigo
   const isSharedWithMe = (activity) => {
-    return activity.createdBy?._id !== user?._id && 
-           activity.sharedWith?.some(u => u._id === user?._id);
+    const creatorId = activity.createdBy?._id?.toString() || activity.createdBy?._id;
+    const currentUserId = user?._id?.toString() || user?._id;
+    return creatorId !== currentUserId && 
+           activity.sharedWith?.some(u => (u._id?.toString() || u._id) === currentUserId);
   };
 
   // Obtener color de fondo según si es compartida
@@ -337,7 +335,7 @@ const Activities = () => {
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(activity.status)}`}>
                       {getStatusLabel(activity.status)}
                     </span>
-                    {activity.registerInCalendar && (
+                    {activity.scheduledDate && (
                       <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                         <CalendarIcon size={14} className="inline mr-1" />
                         En Calendario
@@ -387,6 +385,12 @@ const Activities = () => {
                   </div>
                 )}
               </div>
+
+              {activity.updatedAt && activity.updatedAt !== activity.createdAt && (
+                <div className="mt-3 text-sm text-gray-500 italic">
+                  <span className="font-semibold">Modificación:</span> {moment(activity.updatedAt).format('DD/MM/YYYY HH:mm')}
+                </div>
+              )}
 
               {activity.sharedWith && activity.sharedWith.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -541,26 +545,14 @@ const Activities = () => {
               </div>
 
               <div>
-                <label className="label">Fecha programada</label>
+                <label className="label">Fecha programada (opcional)</label>
                 <input
                   type="datetime-local"
                   value={formData.scheduledDate}
                   onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
                   className="input"
                 />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="registerInCalendar"
-                  checked={formData.registerInCalendar}
-                  onChange={(e) => setFormData({ ...formData, registerInCalendar: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="registerInCalendar" className="text-sm text-gray-700 cursor-pointer">
-                  Registrar actividad en el calendario
-                </label>
+                <p className="text-sm text-gray-500 mt-1">Las actividades con fecha aparecerán en el calendario</p>
               </div>
 
               <div>
