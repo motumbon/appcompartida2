@@ -61,6 +61,17 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       return res.status(400).json({ message: 'No se proporcionó ningún archivo' });
     }
 
+    // Eliminar índice antiguo si existe
+    try {
+      await Contract.collection.dropIndex('contractNumber_1');
+      console.log('Índice antiguo contractNumber_1 eliminado');
+    } catch (error) {
+      // Ignorar si el índice no existe
+      if (!error.message.includes('index not found')) {
+        console.log('No se pudo eliminar índice:', error.message);
+      }
+    }
+
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     
     // Buscar la hoja "DDBB"
