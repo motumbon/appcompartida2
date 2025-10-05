@@ -15,6 +15,10 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  sharedWith: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -24,6 +28,20 @@ const taskSchema = new mongoose.Schema({
     ref: 'Institution',
     default: null
   },
+  checklist: [{
+    text: {
+      type: String,
+      required: true
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completedAt: {
+      type: Date,
+      default: null
+    }
+  }],
   priority: {
     type: String,
     enum: ['baja', 'media', 'alta', 'urgente'],
@@ -31,7 +49,7 @@ const taskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pendiente', 'en_progreso', 'completada', 'cancelada'],
+    enum: ['pendiente', 'completada'],
     default: 'pendiente'
   },
   dueDate: {

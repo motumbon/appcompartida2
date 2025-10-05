@@ -10,11 +10,11 @@ router.get('/', authenticateToken, async (req, res) => {
     const tasks = await Task.find({
       $or: [
         { createdBy: req.user._id },
-        { assignedTo: req.user._id }
+        { sharedWith: req.user._id }
       ]
     })
-      .populate('createdBy', 'username email')
-      .populate('assignedTo', 'username email')
+      .populate('createdBy', 'username email name')
+      .populate('sharedWith', 'username email name')
       .populate('institution', 'name')
       .sort({ createdAt: -1 });
     
@@ -27,7 +27,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Crear tarea
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { title, description, assignedTo, institution, priority, dueDate } = req.body;
+    const { title, description, sharedWith, institution, priority, dueDate, checklist } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: 'El título es requerido' });
@@ -37,15 +37,16 @@ router.post('/', authenticateToken, async (req, res) => {
       title,
       description,
       createdBy: req.user._id,
-      assignedTo: assignedTo || [],
+      sharedWith: sharedWith || [],
       institution,
       priority: priority || 'media',
       dueDate,
+      checklist: checklist || [],
       status: 'pendiente'
     });
 
     await task.save();
-    await task.populate(['createdBy', 'assignedTo', 'institution']);
+    await task.populate(['createdBy', 'sharedWith', 'institution']);
 
     res.status(201).json({ message: 'Tarea creada exitosamente', task });
   } catch (error) {
@@ -57,13 +58,13 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, assignedTo, institution, priority, status, dueDate } = req.body;
+    const { title, description, sharedWith, institution, priority, status, dueDate, checklist, completedAt } = req.body;
 
     const task = await Task.findOne({
       _id: id,
       $or: [
         { createdBy: req.user._id },
-        { assignedTo: req.user._id }
+        { sharedWith: req.user._id }
       ]
     });
 
@@ -71,26 +72,32 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Tarea no encontrada' });
     }
 
-    // Solo el creador puede editar ciertos campos
-    if (task.createdBy.toString() === req.user._id.toString()) {
+    // Creador o usuarios compartidos pueden editar
+    const isCreator = task.createdBy.toString() === req.user._id.toString();
+    const isShared = task.sharedWith.some(userId => userId.toString() === req.user._id.toString());
+
+    if (isCreator || isShared) {
       task.title = title || task.title;
       task.description = description !== undefined ? description : task.description;
-      task.assignedTo = assignedTo !== undefined ? assignedTo : task.assignedTo;
+      task.sharedWith = sharedWith !== undefined ? sharedWith : task.sharedWith;
       task.institution = institution !== undefined ? institution : task.institution;
       task.priority = priority || task.priority;
       task.dueDate = dueDate !== undefined ? dueDate : task.dueDate;
+      task.checklist = checklist !== undefined ? checklist : task.checklist;
     }
 
-    // Cualquier participante puede actualizar el estado
-    if (status) {
+    // Actualizar estado y completedAt
+    if (status !== undefined) {
       task.status = status;
-      if (status === 'completada' && !task.completedAt) {
-        task.completedAt = new Date();
+      if (status === 'completada') {
+        task.completedAt = completedAt || new Date();
+      } else {
+        task.completedAt = null;
       }
     }
 
     await task.save();
-    await task.populate(['createdBy', 'assignedTo', 'institution']);
+    await task.populate(['createdBy', 'sharedWith', 'institution']);
 
     res.json({ message: 'Tarea actualizada exitosamente', task });
   } catch (error) {

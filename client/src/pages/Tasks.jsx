@@ -1,24 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Users } from 'lucide-react';
 import { tasksAPI, contactsAPI, usersAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
 import moment from 'moment';
 
 const Tasks = () => {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [userInstitutions, setUserInstitutions] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [viewMode, setViewMode] = useState('pending'); // 'pending' or 'completed'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    assignedTo: [],
+    sharedWith: [],
     institution: '',
     priority: 'media',
-    dueDate: ''
+    dueDate: '',
+    checklist: []
   });
+  const [newCheckItem, setNewCheckItem] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -61,7 +65,7 @@ const Tasks = () => {
     try {
       const dataToSend = {
         ...formData,
-        assignedTo: formData.assignedTo.map(id => id),
+        sharedWith: formData.sharedWith.filter(id => id),
         institution: formData.institution || null,
         dueDate: formData.dueDate || null
       };
@@ -100,10 +104,11 @@ const Tasks = () => {
     setFormData({
       title: task.title,
       description: task.description || '',
-      assignedTo: task.assignedTo.map(u => u._id) || [],
+      sharedWith: task.sharedWith?.map(u => u._id) || [],
       institution: task.institution?._id || '',
       priority: task.priority,
-      dueDate: task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : ''
+      dueDate: task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : '',
+      checklist: task.checklist || []
     });
     setShowModal(true);
   };
@@ -111,24 +116,60 @@ const Tasks = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTask(null);
+    setNewCheckItem('');
     setFormData({
       title: '',
       description: '',
-      assignedTo: [],
+      sharedWith: [],
       institution: '',
       priority: 'media',
-      dueDate: ''
+      dueDate: '',
+      checklist: []
     });
   };
 
-  const handleStatusChange = async (task, newStatus) => {
+  const handleToggleComplete = async (task) => {
     try {
-      await tasksAPI.update(task._id, { status: newStatus });
-      toast.success('Estado actualizado');
+      const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
+      const completedAt = newStatus === 'completada' ? new Date() : null;
+      await tasksAPI.update(task._id, { status: newStatus, completedAt });
+      toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea marcada como pendiente');
       loadTasks();
     } catch (error) {
       toast.error('Error al actualizar estado');
     }
+  };
+
+  const handleToggleCheckItem = async (task, itemIndex) => {
+    try {
+      const updatedChecklist = [...task.checklist];
+      updatedChecklist[itemIndex] = {
+        ...updatedChecklist[itemIndex],
+        completed: !updatedChecklist[itemIndex].completed,
+        completedAt: !updatedChecklist[itemIndex].completed ? new Date() : null
+      };
+      await tasksAPI.update(task._id, { checklist: updatedChecklist });
+      loadTasks();
+    } catch (error) {
+      toast.error('Error al actualizar checklist');
+    }
+  };
+
+  const addChecklistItem = () => {
+    if (newCheckItem.trim()) {
+      setFormData({
+        ...formData,
+        checklist: [...formData.checklist, { text: newCheckItem.trim(), completed: false }]
+      });
+      setNewCheckItem('');
+    }
+  };
+
+  const removeChecklistItem = (index) => {
+    setFormData({
+      ...formData,
+      checklist: formData.checklist.filter((_, i) => i !== index)
+    });
   };
 
   const getPriorityColor = (priority) => {
@@ -141,19 +182,28 @@ const Tasks = () => {
     return colors[priority] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pendiente: 'bg-yellow-100 text-yellow-800',
-      en_progreso: 'bg-blue-100 text-blue-800',
-      completada: 'bg-green-100 text-green-800',
-      cancelada: 'bg-red-100 text-red-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+  const isSharedWithMe = (task) => {
+    const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
+    const currentUserId = user?._id?.toString() || user?._id;
+    return creatorId !== currentUserId && 
+           task.sharedWith?.some(u => (u._id?.toString() || u._id) === currentUserId);
   };
 
-  const filteredTasks = filterStatus === 'all' 
-    ? tasks 
-    : tasks.filter(t => t.status === filterStatus);
+  const canEditTask = (task) => {
+    const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
+    const currentUserId = user?._id?.toString() || user?._id;
+    return creatorId === currentUserId || isSharedWithMe(task);
+  };
+
+  const filteredTasks = viewMode === 'pending'
+    ? tasks.filter(t => t.status === 'pendiente')
+    : tasks.filter(t => t.status === 'completada');
+
+  const getChecklistProgress = (checklist) => {
+    if (!checklist || checklist.length === 0) return 0;
+    const completed = checklist.filter(item => item.completed).length;
+    return Math.round((completed / checklist.length) * 100);
+  };
 
   return (
     <div>
@@ -170,52 +220,82 @@ const Tasks = () => {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex gap-2 flex-wrap">
-        {[
-          { value: 'all', label: 'Todas' },
-          { value: 'pendiente', label: 'Pendientes' },
-          { value: 'en_progreso', label: 'En Progreso' },
-          { value: 'completada', label: 'Completadas' }
-        ].map(filter => (
-          <button
-            key={filter.value}
-            onClick={() => setFilterStatus(filter.value)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filterStatus === filter.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
+      {/* View Mode Toggle */}
+      <div className="mb-6 flex gap-2 bg-white rounded-lg shadow-sm p-1 inline-flex">
+        <button
+          onClick={() => setViewMode('pending')}
+          className={`px-4 py-2 rounded font-medium transition-colors ${
+            viewMode === 'pending'
+              ? 'bg-primary-600 text-white'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Pendientes ({tasks.filter(t => t.status === 'pendiente').length})
+        </button>
+        <button
+          onClick={() => setViewMode('completed')}
+          className={`px-4 py-2 rounded font-medium transition-colors ${
+            viewMode === 'completed'
+              ? 'bg-primary-600 text-white'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Completadas ({tasks.filter(t => t.status === 'completada').length})
+        </button>
       </div>
 
       {/* Tasks Grid */}
       <div className="space-y-4">
         {filteredTasks.map((task) => (
-          <div key={task._id} className="bg-white rounded-lg shadow-md p-6">
+          <div key={task._id} className={`rounded-lg shadow-md p-6 border-2 ${
+            isSharedWithMe(task) ? 'bg-blue-50 border-blue-200' : 'bg-white border-transparent'
+          }`}>
             <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">{task.title}</h3>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}>
-                    {task.status.replace('_', ' ').toUpperCase()}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(task.priority)}`}>
-                    Prioridad: {task.priority.toUpperCase()}
-                  </span>
+              <div className="flex-1 flex items-start gap-3">
+                <button
+                  onClick={() => handleToggleComplete(task)}
+                  disabled={!canEditTask(task)}
+                  className={`mt-1 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                    task.status === 'completada'
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : 'border-gray-300 hover:border-green-500'
+                  } ${!canEditTask(task) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {task.status === 'completada' && <Check size={16} />}
+                </button>
+                <div className="flex-1">
+                  <h3 className={`text-xl font-semibold mb-2 ${
+                    task.status === 'completada' ? 'line-through text-gray-500' : 'text-gray-800'
+                  }`}>{task.title}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(task.priority)}`}>
+                      {task.priority.toUpperCase()}
+                    </span>
+                    {isSharedWithMe(task) && (
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 flex items-center gap-1">
+                        <Users size={14} />
+                        Compartida conmigo
+                      </span>
+                    )}
+                    {task.sharedWith && task.sharedWith.length > 0 && !isSharedWithMe(task) && (
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 flex items-center gap-1">
+                        <Users size={14} />
+                        Compartida ({task.sharedWith.length})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(task)}
-                  className="text-blue-600 hover:text-blue-800"
-                  title="Editar"
-                >
-                  <Edit2 size={20} />
-                </button>
+                {canEditTask(task) && (
+                  <button
+                    onClick={() => handleEdit(task)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Editar"
+                  >
+                    <Edit2 size={20} />
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(task._id)}
                   className="text-red-600 hover:text-red-800"
@@ -227,13 +307,50 @@ const Tasks = () => {
             </div>
 
             {task.description && (
-              <p className="text-gray-700 mb-4">{task.description}</p>
+              <p className="text-gray-700 mb-4 ml-9">{task.description}</p>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
+            {/* Checklist */}
+            {task.checklist && task.checklist.length > 0 && (
+              <div className="mb-4 ml-9">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-600">
+                    Checklist ({task.checklist.filter(item => item.completed).length}/{task.checklist.length})
+                  </span>
+                  <div className="w-32 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all"
+                      style={{ width: `${getChecklistProgress(task.checklist)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {task.checklist.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleCheckItem(task, index)}
+                        disabled={!canEditTask(task)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          item.completed
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : 'border-gray-300 hover:border-green-500'
+                        } ${!canEditTask(task) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        {item.completed && <Check size={14} />}
+                      </button>
+                      <span className={`text-sm ${item.completed ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4 ml-9">
               <div>
                 <span className="font-semibold text-gray-600">Creado por:</span>
-                <p className="text-gray-800">{task.createdBy?.username}</p>
+                <p className="text-gray-800">{task.createdBy?.name || task.createdBy?.username}</p>
               </div>
               
               {task.institution && (
@@ -246,39 +363,31 @@ const Tasks = () => {
               {task.dueDate && (
                 <div>
                   <span className="font-semibold text-gray-600">Fecha límite:</span>
-                  <p className={`text-gray-800 ${moment(task.dueDate).isBefore(moment()) && task.status !== 'completada' ? 'text-red-600 font-semibold' : ''}`}>
+                  <p className={`${moment(task.dueDate).isBefore(moment()) && task.status !== 'completada' ? 'text-red-600 font-semibold' : 'text-gray-800'}`}>
                     {moment(task.dueDate).format('DD/MM/YYYY')}
                   </p>
                 </div>
               )}
             </div>
 
-            {task.assignedTo && task.assignedTo.length > 0 && (
-              <div className="mb-4 pb-4 border-b border-gray-200">
-                <span className="font-semibold text-gray-600 text-sm">Asignado a:</span>
+            {task.sharedWith && task.sharedWith.length > 0 && (
+              <div className="ml-9 pb-2">
+                <span className="font-semibold text-gray-600 text-sm">Compartida con:</span>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {task.assignedTo.map((user) => (
-                    <span key={user._id} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
-                      {user.username}
+                  {task.sharedWith.map((user) => (
+                    <span key={user._id} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
+                      {user.name || user.username}
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Status selector */}
-            <div className="flex gap-2">
-              <select
-                value={task.status}
-                onChange={(e) => handleStatusChange(task, e.target.value)}
-                className="input text-sm"
-              >
-                <option value="pendiente">Pendiente</option>
-                <option value="en_progreso">En Progreso</option>
-                <option value="completada">Completada</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
-            </div>
+            {task.status === 'completada' && task.completedAt && (
+              <div className="ml-9 text-sm text-gray-500 italic">
+                Completada el {moment(task.completedAt).format('DD/MM/YYYY HH:mm')}
+              </div>
+            )}
           </div>
         ))}
 
@@ -359,13 +468,13 @@ const Tasks = () => {
               </div>
 
               <div>
-                <label className="label">Asignar a usuarios</label>
+                <label className="label">Compartir con</label>
                 <select
                   multiple
-                  value={formData.assignedTo}
+                  value={formData.sharedWith}
                   onChange={(e) => {
                     const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setFormData({ ...formData, assignedTo: selected });
+                    setFormData({ ...formData, sharedWith: selected });
                   }}
                   className="input h-32"
                 >
@@ -375,7 +484,44 @@ const Tasks = () => {
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar múltiples</p>
+                <p className="text-sm text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar múltiples. Los usuarios podrán ver y editar la tarea.</p>
+              </div>
+
+              <div>
+                <label className="label">Checklist</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newCheckItem}
+                    onChange={(e) => setNewCheckItem(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+                    placeholder="Agregar elemento a la checklist"
+                    className="input flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={addChecklistItem}
+                    className="btn btn-secondary"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+                {formData.checklist.length > 0 && (
+                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                    {formData.checklist.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                        <span className="text-sm text-gray-700">{item.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeChecklistItem(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
