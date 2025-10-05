@@ -197,20 +197,63 @@ const Tasks = () => {
   };
 
   const isSharedWithMe = (task) => {
-    if (!task || !task.createdBy || !user) return false;
-    const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
-    const currentUserId = user?._id?.toString() || user?._id;
-    if (!creatorId || !currentUserId) return false;
-    return creatorId !== currentUserId && 
-           Array.isArray(task.sharedWith) && task.sharedWith.some(u => (u._id?.toString() || u._id || u.toString()) === currentUserId);
+    if (!task || !task.createdBy || !user) {
+      console.log('isSharedWithMe: validación inicial falló', { task: !!task, createdBy: !!task?.createdBy, user: !!user });
+      return false;
+    }
+    
+    const creatorId = (task.createdBy?._id || task.createdBy)?.toString();
+    const currentUserId = (user?._id || user?.id)?.toString();
+    
+    if (!creatorId || !currentUserId) {
+      console.log('isSharedWithMe: IDs no disponibles', { creatorId, currentUserId });
+      return false;
+    }
+    
+    const isNotCreator = creatorId !== currentUserId;
+    const isShared = Array.isArray(task.sharedWith) && task.sharedWith.some(u => {
+      const sharedUserId = (u?._id || u)?.toString();
+      return sharedUserId === currentUserId;
+    });
+    
+    console.log('isSharedWithMe:', { 
+      taskTitle: task.title,
+      creatorId, 
+      currentUserId, 
+      isNotCreator, 
+      sharedWithCount: task.sharedWith?.length,
+      isShared,
+      result: isNotCreator && isShared
+    });
+    
+    return isNotCreator && isShared;
   };
 
   const canEditTask = (task) => {
-    if (!task || !task.createdBy || !user) return false;
-    const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
-    const currentUserId = user?._id?.toString() || user?._id;
-    if (!creatorId || !currentUserId) return false;
-    return creatorId === currentUserId || isSharedWithMe(task);
+    if (!task || !task.createdBy || !user) {
+      console.log('canEditTask: validación inicial falló');
+      return false;
+    }
+    
+    const creatorId = (task.createdBy?._id || task.createdBy)?.toString();
+    const currentUserId = (user?._id || user?.id)?.toString();
+    
+    if (!creatorId || !currentUserId) {
+      console.log('canEditTask: IDs no disponibles', { creatorId, currentUserId });
+      return false;
+    }
+    
+    const isCreator = creatorId === currentUserId;
+    const sharedWithMe = isSharedWithMe(task);
+    
+    console.log('canEditTask:', {
+      taskTitle: task.title,
+      isCreator,
+      sharedWithMe,
+      result: isCreator || sharedWithMe
+    });
+    
+    return isCreator || sharedWithMe;
   };
 
   const filteredTasks = viewMode === 'pending'
