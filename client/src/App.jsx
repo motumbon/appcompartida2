@@ -12,6 +12,7 @@ import Activities from './pages/Activities';
 import Tasks from './pages/Tasks';
 import Complaints from './pages/Complaints';
 import Contracts from './pages/Contracts';
+import Stock from './pages/Stock';
 import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminInstitutions from './pages/AdminInstitutions';
@@ -82,6 +83,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Contracts />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/stock"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Stock />
                 </Layout>
               </PrivateRoute>
             }

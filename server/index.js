@@ -18,6 +18,7 @@ import activitiesRoutes from './routes/activities.js';
 import tasksRoutes from './routes/tasks.js';
 import complaintsRoutes from './routes/complaints.js';
 import contractsRoutes from './routes/contracts.js';
+import stockRoutes from './routes/stock.js';
 
 // Importar modelos
 import User from './models/User.js';
@@ -79,6 +80,7 @@ app.use('/api/activities', activitiesRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/complaints', complaintsRoutes);
 app.use('/api/contracts', contractsRoutes);
+app.use('/api/stock', stockRoutes);
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {

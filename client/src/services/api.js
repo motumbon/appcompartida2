@@ -142,4 +142,19 @@ export const contractsAPI = {
   delete: (id) => api.delete(`/contracts/${id}`)
 };
 
+// Stock API
+export const stockAPI = {
+  getStock: () => api.get('/stock'),
+  uploadExcel: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/stock/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  deleteStock: () => api.delete('/stock')
+};
+
 export default api;

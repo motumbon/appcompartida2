@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Menu, X, LogOut, Users, Building2, UserCircle, 
-  Calendar, CheckSquare, AlertCircle, FileText, Home 
+  Calendar, CheckSquare, AlertCircle, FileText, Home, Package 
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -24,6 +24,7 @@ const Layout = ({ children }) => {
     { path: '/tasks', label: 'Tareas', icon: CheckSquare },
     { path: '/complaints', label: 'Reclamos', icon: AlertCircle },
     { path: '/contracts', label: 'Contratos', icon: FileText },
+    { path: '/stock', label: 'Status BO', icon: Package },
   ];
 
   const adminMenuItems = [
