@@ -8,7 +8,6 @@ import moment from 'moment';
 const Contracts = () => {
   const [contract, setContract] = useState({ items: [], uploadedBy: null, uploadedAt: null, fileName: null });
   const [filteredData, setFilteredData] = useState([]);
-  const [baseFilteredData, setBaseFilteredData] = useState([]);
   const [selectedKam, setSelectedKam] = useState('');
   const [kamOptions, setKamOptions] = useState([]);
   const [clienteOptions, setClienteOptions] = useState([]);
@@ -34,9 +33,34 @@ const Contracts = () => {
   }, [contract.items, selectedKam, filters, statusFilter]);
 
   useEffect(() => {
-    // Actualizar opciones de dropdowns basándose en datos filtrados
-    updateDropdownOptions();
-  }, [baseFilteredData]);
+    // Actualizar opciones de clientes cuando cambia el KAM
+    if (selectedKam && contract.items.length > 0) {
+      const clientesDeKam = contract.items
+        .filter(item => item.kamRepr === selectedKam)
+        .map(item => item.nomCliente)
+        .filter(Boolean);
+      const uniqueClientes = [...new Set(clientesDeKam)].sort();
+      setClienteOptions(uniqueClientes);
+    } else if (contract.items.length > 0) {
+      const todosClientes = contract.items
+        .map(item => item.nomCliente)
+        .filter(Boolean);
+      const uniqueClientes = [...new Set(todosClientes)].sort();
+      setClienteOptions(uniqueClientes);
+    } else {
+      setClienteOptions([]);
+    }
+  }, [selectedKam, contract.items]);
+
+  useEffect(() => {
+    // Actualizar opciones de líneas
+    if (contract.items.length > 0) {
+      const lineas = [...new Set(contract.items.map(item => item.linea).filter(Boolean))].sort();
+      setLineaOptions(lineas);
+    } else {
+      setLineaOptions([]);
+    }
+  }, [contract.items]);
 
   const loadContracts = async () => {
     try {
@@ -47,9 +71,6 @@ const Contracts = () => {
         // Extraer KAMs únicos
         const kams = [...new Set(response.data.items.map(item => item.kamRepr).filter(Boolean))].sort();
         setKamOptions(kams);
-        
-        // Inicializar baseFilteredData con todos los items
-        setBaseFilteredData(response.data.items);
         
         // Si solo hay un KAM, seleccionarlo automáticamente
         if (kams.length === 1) {
@@ -111,6 +132,15 @@ const Contracts = () => {
       filtered = filtered.filter(item => item.kamRepr === selectedKam);
     }
 
+    // Aplicar otros filtros
+    Object.keys(filters).forEach(key => {
+      if (filters[key]) {
+        filtered = filtered.filter(item =>
+          String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase())
+        );
+      }
+    });
+
     // Filtro por estado (vigente, próximo a vencer, vencido)
     if (statusFilter) {
       const today = moment();
@@ -129,35 +159,8 @@ const Contracts = () => {
       });
     }
 
-    // Guardar datos base filtrados (KAM + Status) para actualizar dropdowns
-    setBaseFilteredData(filtered);
-
-    // Aplicar otros filtros (texto)
-    Object.keys(filters).forEach(key => {
-      if (filters[key]) {
-        filtered = filtered.filter(item =>
-          String(item[key] || '').toLowerCase().includes(filters[key].toLowerCase())
-        );
-      }
-    });
-
     setFilteredData(filtered);
     calculateStats(filtered);
-  };
-
-  const updateDropdownOptions = () => {
-    if (baseFilteredData.length === 0) {
-      setClienteOptions([]);
-      setLineaOptions([]);
-      return;
-    }
-
-    // Extraer opciones únicas de los datos base filtrados
-    const clientes = [...new Set(baseFilteredData.map(item => item.nomCliente).filter(Boolean))].sort();
-    const lineas = [...new Set(baseFilteredData.map(item => item.linea).filter(Boolean))].sort();
-
-    setClienteOptions(clientes);
-    setLineaOptions(lineas);
   };
 
   const calculateStats = (data) => {
