@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usersAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, Shield, User } from 'lucide-react';
 import moment from 'moment';
 
 const AdminUsers = () => {
