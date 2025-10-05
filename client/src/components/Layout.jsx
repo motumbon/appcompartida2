@@ -45,19 +45,8 @@ const Layout = ({ children }) => {
     if (isAdmin) return true;
     
     // Verificar permisos del usuario
-    const hasPermission = user?.permissions?.[item.permission] !== false;
-    
-    console.log(`Menú "${item.label}" (${item.permission}):`, {
-      permiso: user?.permissions?.[item.permission],
-      hasPermission
-    });
-    
-    return hasPermission;
+    return user?.permissions?.[item.permission] !== false;
   });
-
-  console.log('Usuario actual:', user?.username);
-  console.log('Permisos:', user?.permissions);
-  console.log('Items de menú mostrados:', menuItems.map(i => i.label));
 
   const adminMenuItems = [
     { path: '/admin/users', label: 'Gestión de Usuarios', icon: Users },
