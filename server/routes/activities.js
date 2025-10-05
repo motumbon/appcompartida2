@@ -83,6 +83,39 @@ router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
   }
 });
 
+// Descargar archivo adjunto (DEBE IR ANTES de las rutas /:id)
+router.get('/:id/attachments/:filename', authenticateToken, async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    
+    const activity = await Activity.findOne({
+      _id: id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
+
+    if (!activity) {
+      return res.status(404).json({ message: 'Actividad no encontrada' });
+    }
+
+    const attachment = activity.attachments.find(a => a.filename === filename);
+    
+    if (!attachment) {
+      return res.status(404).json({ message: 'Archivo no encontrado' });
+    }
+
+    if (!fs.existsSync(attachment.path)) {
+      return res.status(404).json({ message: 'Archivo no existe en el servidor' });
+    }
+
+    res.download(attachment.path, attachment.originalName);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al descargar archivo', error: error.message });
+  }
+});
+
 // Actualizar actividad
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -152,39 +185,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Actividad eliminada exitosamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al eliminar actividad', error: error.message });
-  }
-});
-
-// Descargar archivo adjunto
-router.get('/:id/attachments/:filename', authenticateToken, async (req, res) => {
-  try {
-    const { id, filename } = req.params;
-    
-    const activity = await Activity.findOne({
-      _id: id,
-      $or: [
-        { createdBy: req.user._id },
-        { sharedWith: req.user._id }
-      ]
-    });
-
-    if (!activity) {
-      return res.status(404).json({ message: 'Actividad no encontrada' });
-    }
-
-    const attachment = activity.attachments.find(a => a.filename === filename);
-    
-    if (!attachment) {
-      return res.status(404).json({ message: 'Archivo no encontrado' });
-    }
-
-    if (!fs.existsSync(attachment.path)) {
-      return res.status(404).json({ message: 'Archivo no existe en el servidor' });
-    }
-
-    res.download(attachment.path, attachment.originalName);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al descargar archivo', error: error.message });
   }
 });
 
