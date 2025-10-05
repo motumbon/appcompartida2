@@ -244,6 +244,23 @@ const Contracts = () => {
     setStatusFilter('');
   };
 
+  // Función para obtener datos únicos para tabla resumida
+  const getUniqueContractsForSummary = (data) => {
+    const uniqueMap = new Map();
+    
+    data.forEach(item => {
+      // Crear una clave única basada en los 4 campos
+      const key = `${item.linea}|${item.nomCliente}|${item.numPedido}|${item.finValidez}`;
+      
+      // Solo agregar si no existe en el Map
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -488,7 +505,7 @@ const Contracts = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredData.map((item, index) => (
+                  {getUniqueContractsForSummary(filteredData).map((item, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-700">{item.linea}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{item.nomCliente}</td>
@@ -520,7 +537,8 @@ const Contracts = () => {
             {filteredData.length > 0 && (
               <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
                 <p className="text-sm text-gray-700">
-                  Vista resumida: <span className="font-semibold">{filteredData.length}</span> contratos
+                  Vista resumida: <span className="font-semibold">{getUniqueContractsForSummary(filteredData).length}</span> contratos únicos 
+                  <span className="text-gray-500 ml-2">({filteredData.length} ítems totales)</span>
                 </p>
               </div>
             )}
