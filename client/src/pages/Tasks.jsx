@@ -503,11 +503,13 @@ const Tasks = () => {
                   }}
                   className="input h-32"
                 >
-                  {contacts.map((contact) => (
-                    <option key={contact.userId._id} value={contact.userId._id}>
-                      {contact.name}
-                    </option>
-                  ))}
+                  {contacts
+                    .filter(contact => contact.userId && contact.userId._id)
+                    .map((contact) => (
+                      <option key={contact.userId._id} value={contact.userId._id}>
+                        {contact.name}
+                      </option>
+                    ))}
                 </select>
                 <p className="text-sm text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar múltiples. Los usuarios podrán ver y editar la tarea.</p>
               </div>

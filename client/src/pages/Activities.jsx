@@ -433,11 +433,13 @@ const Activities = () => {
               >
                 <option value="all">👥 Todos los usuarios</option>
                 <option value="mine">👤 Mis actividades</option>
-                {contacts.map((contact) => (
-                  <option key={contact.userId._id} value={contact.userId._id}>
-                    🤝 {contact.name}
-                  </option>
-                ))}
+                {contacts
+                  .filter(contact => contact.userId && contact.userId._id)
+                  .map((contact) => (
+                    <option key={contact.userId._id} value={contact.userId._id}>
+                      🤝 {contact.name}
+                    </option>
+                  ))}
               </select>
               <select
                 value={filterInstitution}
@@ -690,11 +692,13 @@ const Activities = () => {
                   }}
                   className="input h-32"
                 >
-                  {contacts.map((contact) => (
-                    <option key={contact.userId._id} value={contact.userId._id}>
-                      {contact.name}
-                    </option>
-                  ))}
+                  {contacts
+                    .filter(contact => contact.userId && contact.userId._id)
+                    .map((contact) => (
+                      <option key={contact.userId._id} value={contact.userId._id}>
+                        {contact.name}
+                      </option>
+                    ))}
                 </select>
                 <p className="text-sm text-gray-500 mt-1">Mantén Ctrl/Cmd para seleccionar múltiples</p>
               </div>
