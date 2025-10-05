@@ -12,6 +12,7 @@ import Activities from './pages/Activities';
 import Tasks from './pages/Tasks';
 import Complaints from './pages/Complaints';
 import Contracts from './pages/Contracts';
+import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminInstitutions from './pages/AdminInstitutions';
 
@@ -81,6 +82,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Contracts />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Profile />
                 </Layout>
               </PrivateRoute>
             }

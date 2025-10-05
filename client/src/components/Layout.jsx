@@ -49,9 +49,14 @@ const Layout = ({ children }) => {
               <h1 className="text-xl font-bold">App Trabajo en Terreno 2.0</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm">
-                {user?.username} {isAdmin && '(Admin)'}
-              </span>
+              <Link
+                to="/profile"
+                className="text-sm hover:text-primary-200 transition-colors cursor-pointer flex items-center gap-2"
+                title="Ver perfil"
+              >
+                <UserCircle size={20} />
+                <span>{user?.name || user?.username} {isAdmin && '(Admin)'}</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-md hover:bg-primary-700 transition-colors"

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Shield, User } from 'lucide-react';
 import { usersAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
+import { Trash2, RotateCcw } from 'lucide-react';
 import moment from 'moment';
 
 const AdminUsers = () => {
@@ -33,6 +33,17 @@ const AdminUsers = () => {
         loadUsers();
       } catch (error) {
         toast.error(error.response?.data?.message || 'Error al eliminar usuario');
+      }
+    }
+  };
+
+  const handleResetPassword = async (userId, username) => {
+    if (window.confirm(`¿Resetear contraseña de ${username}? La nueva contraseña será: 123abc`)) {
+      try {
+        await usersAPI.resetPassword(userId);
+        toast.success(`Contraseña reseteada a "123abc" para ${username}`);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Error al resetear contraseña');
       }
     }
   };
@@ -89,18 +100,27 @@ const AdminUsers = () => {
                     {moment(user.createdAt).format('DD/MM/YYYY')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleDelete(user._id, user.username)}
-                      disabled={user.username === 'administrador'}
-                      className={`${
-                        user.username === 'administrador'
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-red-600 hover:text-red-800'
-                      }`}
-                      title={user.username === 'administrador' ? 'No se puede eliminar' : 'Eliminar usuario'}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleResetPassword(user._id, user.username)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Resetear contraseña a 123abc"
+                      >
+                        <RotateCcw size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user._id, user.username)}
+                        disabled={user.username === 'administrador'}
+                        className={`${
+                          user.username === 'administrador'
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-red-600 hover:text-red-800'
+                        }`}
+                        title={user.username === 'administrador' ? 'No se puede eliminar' : 'Eliminar usuario'}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

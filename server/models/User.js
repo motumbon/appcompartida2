@@ -8,6 +8,10 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  name: {
+    type: String,
+    trim: true
+  },
   email: {
     type: String,
     required: true,
@@ -25,6 +29,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6
+  },
+  profileImage: {
+    type: String,
+    default: null
   },
   isAdmin: {
     type: Boolean,

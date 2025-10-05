@@ -373,60 +373,9 @@ const Activities = () => {
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
       
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Actividades</h1>
-        <div className="flex gap-3 flex-wrap">
-          <div className="flex gap-2 bg-white rounded-lg shadow-sm p-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
-            >
-              Lista
-            </button>
-            <button
-              onClick={() => setViewMode('pending')}
-              className={`px-4 py-2 rounded ${viewMode === 'pending' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
-            >
-              Pendientes
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded ${viewMode === 'calendar' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
-            >
-              Calendario
-            </button>
-            <button
-              onClick={() => setViewMode('completed')}
-              className={`px-4 py-2 rounded ${viewMode === 'completed' ? 'bg-primary-600 text-white' : 'text-gray-600'}`}
-            >
-              Completadas
-            </button>
-          </div>
-          <select
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            className="input text-sm min-w-[200px]"
-          >
-            <option value="all">Todos los usuarios</option>
-            <option value="mine">Mis actividades</option>
-            {contacts.map((contact) => (
-              <option key={contact.userId._id} value={contact.userId._id}>
-                Compartidas con {contact.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filterInstitution}
-            onChange={(e) => setFilterInstitution(e.target.value)}
-            className="input text-sm min-w-[200px]"
-          >
-            <option value="all">Todas las instituciones</option>
-            {userInstitutions.map((inst) => (
-              <option key={inst._id} value={inst._id}>
-                {inst.name}
-              </option>
-            ))}
-          </select>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-gray-800">Actividades</h1>
           <button
             onClick={() => setShowModal(true)}
             className="btn btn-primary flex items-center gap-2"
@@ -434,6 +383,67 @@ const Activities = () => {
             <Plus size={20} />
             Crear Actividad
           </button>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+            {/* Vista */}
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 text-sm rounded ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+              >
+                Lista
+              </button>
+              <button
+                onClick={() => setViewMode('pending')}
+                className={`px-3 py-1.5 text-sm rounded ${viewMode === 'pending' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+              >
+                Pendientes
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 py-1.5 text-sm rounded ${viewMode === 'calendar' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+              >
+                Calendario
+              </button>
+              <button
+                onClick={() => setViewMode('completed')}
+                className={`px-3 py-1.5 text-sm rounded ${viewMode === 'completed' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+              >
+                Completadas
+              </button>
+            </div>
+
+            {/* Filtros */}
+            <div className="flex flex-wrap gap-2 flex-1">
+              <select
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+                className="input-sm text-sm flex-1 min-w-[180px]"
+              >
+                <option value="all">👥 Todos los usuarios</option>
+                <option value="mine">👤 Mis actividades</option>
+                {contacts.map((contact) => (
+                  <option key={contact.userId._id} value={contact.userId._id}>
+                    🤝 {contact.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filterInstitution}
+                onChange={(e) => setFilterInstitution(e.target.value)}
+                className="input-sm text-sm flex-1 min-w-[180px]"
+              >
+                <option value="all">🏢 Todas las instituciones</option>
+                {userInstitutions.map((inst) => (
+                  <option key={inst._id} value={inst._id}>
+                    {inst.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -51,7 +51,15 @@ export const usersAPI = {
   autocomplete: (query) => api.get(`/users/autocomplete?query=${encodeURIComponent(query)}`),
   linkInstitution: (institutionId) => api.post('/users/institutions/link', { institutionId }),
   unlinkInstitution: (id) => api.delete(`/users/institutions/${id}`),
-  getUserInstitutions: () => api.get('/users/institutions')
+  getUserInstitutions: () => api.get('/users/institutions'),
+  uploadProfileImage: (formData) => api.post('/users/profile-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  changePassword: (data) => api.put('/users/change-password', data),
+  deleteAccount: () => api.delete('/users/me'),
+  resetPassword: (userId) => api.post(`/users/${userId}/reset-password`)
 };
 
 // Institutions API
