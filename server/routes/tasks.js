@@ -18,7 +18,18 @@ router.get('/', authenticateToken, async (req, res) => {
       .populate('institution', 'name')
       .sort({ createdAt: -1 });
     
-    res.json(tasks);
+    // Asegurar que todos los campos existan (para tareas antiguas)
+    const tasksWithDefaults = tasks.map(task => {
+      const taskObj = task.toObject();
+      return {
+        ...taskObj,
+        checklist: taskObj.checklist || [],
+        sharedWith: taskObj.sharedWith || [],
+        status: taskObj.status || 'pendiente'
+      };
+    });
+    
+    res.json(tasksWithDefaults);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener tareas', error: error.message });
   }

@@ -26,7 +26,18 @@ router.get('/', authenticateToken, async (req, res) => {
       .populate('institution', 'name')
       .sort({ createdAt: -1 });
     
-    res.json(activities);
+    // Asegurar que todos los campos existan (para actividades antiguas)
+    const activitiesWithDefaults = activities.map(activity => {
+      const activityObj = activity.toObject();
+      return {
+        ...activityObj,
+        sharedWith: activityObj.sharedWith || [],
+        attachments: activityObj.attachments || [],
+        status: activityObj.status || 'pendiente'
+      };
+    });
+    
+    res.json(activitiesWithDefaults);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener actividades', error: error.message });
   }

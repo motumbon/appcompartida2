@@ -308,9 +308,12 @@ const Activities = () => {
     if (filterUser === 'mine') {
       // Solo mis actividades no compartidas
       filtered = filtered.filter(a => {
+        if (!a || !a.createdBy || !user) return false;
         // Normalizar IDs para comparación
         const activityCreatorId = a.createdBy?._id || a.createdBy;
         const currentUserId = user?._id || user?.id;
+        
+        if (!activityCreatorId || !currentUserId) return false;
         
         // Verificar si es mi actividad
         const isMyActivity = String(activityCreatorId) === String(currentUserId);
@@ -323,7 +326,7 @@ const Activities = () => {
     } else if (filterUser !== 'all') {
       // Actividades compartidas con un usuario específico
       filtered = filtered.filter(a => 
-        a.sharedWith && a.sharedWith.some(u => u._id === filterUser)
+        a && Array.isArray(a.sharedWith) && a.sharedWith.some(u => u && u._id === filterUser)
       );
     }
 
@@ -341,10 +344,12 @@ const Activities = () => {
 
   // Determinar si una actividad fue compartida conmigo
   const isSharedWithMe = (activity) => {
+    if (!activity || !activity.createdBy || !user) return false;
     const creatorId = activity.createdBy?._id?.toString() || activity.createdBy?._id;
     const currentUserId = user?._id?.toString() || user?._id;
+    if (!creatorId || !currentUserId) return false;
     return creatorId !== currentUserId && 
-           activity.sharedWith?.some(u => (u._id?.toString() || u._id) === currentUserId);
+           Array.isArray(activity.sharedWith) && activity.sharedWith.some(u => (u._id?.toString() || u._id || u.toString()) === currentUserId);
   };
 
   // Obtener color de fondo según si es compartida

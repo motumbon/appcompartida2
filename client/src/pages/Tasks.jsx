@@ -130,18 +130,31 @@ const Tasks = () => {
 
   const handleToggleComplete = async (task) => {
     try {
+      console.log('handleToggleComplete llamado con task:', task);
+      if (!task || !task._id) {
+        toast.error('Error: tarea inválida');
+        return;
+      }
+      
       const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
       const completedAt = newStatus === 'completada' ? new Date() : null;
+      console.log('Actualizando tarea:', { newStatus, completedAt });
       await tasksAPI.update(task._id, { status: newStatus, completedAt });
       toast.success(newStatus === 'completada' ? 'Tarea completada' : 'Tarea marcada como pendiente');
       loadTasks();
     } catch (error) {
+      console.error('Error en handleToggleComplete:', error);
       toast.error('Error al actualizar estado');
     }
   };
 
   const handleToggleCheckItem = async (task, itemIndex) => {
     try {
+      if (!task || !Array.isArray(task.checklist) || !task.checklist[itemIndex]) {
+        toast.error('Error: checklist inválido');
+        return;
+      }
+      
       const updatedChecklist = [...task.checklist];
       updatedChecklist[itemIndex] = {
         ...updatedChecklist[itemIndex],
@@ -151,6 +164,7 @@ const Tasks = () => {
       await tasksAPI.update(task._id, { checklist: updatedChecklist });
       loadTasks();
     } catch (error) {
+      console.error('Error en handleToggleCheckItem:', error);
       toast.error('Error al actualizar checklist');
     }
   };
@@ -183,15 +197,19 @@ const Tasks = () => {
   };
 
   const isSharedWithMe = (task) => {
+    if (!task || !task.createdBy || !user) return false;
     const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
     const currentUserId = user?._id?.toString() || user?._id;
+    if (!creatorId || !currentUserId) return false;
     return creatorId !== currentUserId && 
-           task.sharedWith?.some(u => (u._id?.toString() || u._id) === currentUserId);
+           Array.isArray(task.sharedWith) && task.sharedWith.some(u => (u._id?.toString() || u._id || u.toString()) === currentUserId);
   };
 
   const canEditTask = (task) => {
+    if (!task || !task.createdBy || !user) return false;
     const creatorId = task.createdBy?._id?.toString() || task.createdBy?._id;
     const currentUserId = user?._id?.toString() || user?._id;
+    if (!creatorId || !currentUserId) return false;
     return creatorId === currentUserId || isSharedWithMe(task);
   };
 
