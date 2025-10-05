@@ -15,14 +15,6 @@ const complaintSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  clientEmail: {
-    type: String,
-    default: ''
-  },
-  clientPhone: {
-    type: String,
-    default: ''
-  },
   institution: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Institution',
@@ -33,14 +25,24 @@ const complaintSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  assignedTo: {
+  sharedWith: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
+    ref: 'User'
+  }],
+  attachments: [{
+    filename: String,
+    originalName: String,
+    path: String,
+    size: Number,
+    mimetype: String,
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   status: {
     type: String,
-    enum: ['recibido', 'en_revision', 'en_proceso', 'resuelto', 'cerrado'],
+    enum: ['recibido', 'en_revision', 'resuelto'],
     default: 'recibido'
   },
   priority: {

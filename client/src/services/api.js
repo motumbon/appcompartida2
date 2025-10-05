@@ -108,10 +108,21 @@ export const tasksAPI = {
 // Complaints API
 export const complaintsAPI = {
   getAll: () => api.get('/complaints'),
-  create: (data) => api.post('/complaints', data),
-  update: (id, data) => api.put(`/complaints/${id}`, data),
+  create: (data) => api.post('/complaints', data, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  update: (id, data) => api.put(`/complaints/${id}`, data, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
   addUpdate: (id, data) => api.post(`/complaints/${id}/updates`, data),
-  delete: (id) => api.delete(`/complaints/${id}`)
+  delete: (id) => api.delete(`/complaints/${id}`),
+  downloadAttachment: (complaintId, filename) => api.get(`/complaints/${complaintId}/attachments/${filename}`, {
+    responseType: 'blob'
+  })
 };
 
 // Contracts API

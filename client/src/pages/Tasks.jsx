@@ -12,7 +12,7 @@ const Tasks = () => {
   const [userInstitutions, setUserInstitutions] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [viewMode, setViewMode] = useState('pending'); // 'pending' or 'completed'
+  const [viewMode, setViewMode] = useState('pending'); // 'pending', 'completed', or 'assigned'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -256,9 +256,17 @@ const Tasks = () => {
     return isCreator || sharedWithMe;
   };
 
-  const filteredTasks = viewMode === 'pending'
-    ? tasks.filter(t => t.status === 'pendiente')
-    : tasks.filter(t => t.status === 'completada');
+  const filteredTasks = (() => {
+    if (viewMode === 'pending') {
+      return tasks.filter(t => t.status === 'pendiente');
+    } else if (viewMode === 'completed') {
+      return tasks.filter(t => t.status === 'completada');
+    } else if (viewMode === 'assigned') {
+      // Solo tareas compartidas conmigo (no las que yo creé)
+      return tasks.filter(t => isSharedWithMe(t));
+    }
+    return tasks;
+  })();
 
   const getChecklistProgress = (checklist) => {
     if (!checklist || checklist.length === 0) return 0;
@@ -294,6 +302,17 @@ const Tasks = () => {
           }`}
         >
           Pendientes ({tasks.filter(t => t.status === 'pendiente').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('assigned')}
+          className={`px-4 py-2 rounded font-medium transition-colors ${
+            viewMode === 'assigned'
+              ? 'bg-primary-600 text-white'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Asignadas a mí ({tasks.filter(t => isSharedWithMe(t)).length})
         </button>
         <button
           type="button"
