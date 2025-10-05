@@ -27,14 +27,14 @@ const Home = () => {
         activitiesAPI.getAll(),
         tasksAPI.getAll(),
         complaintsAPI.getAll(),
-        contractsAPI.getAll()
+        contractsAPI.getContracts()
       ]);
 
       setStats({
         activities: activitiesRes.data.length,
-        tasks: tasksRes.data.filter(t => t.status !== 'completada').length,
-        complaints: complaintsRes.data.filter(c => c.status !== 'cerrado').length,
-        contracts: contractsRes.data.length
+        tasks: tasksRes.data.length,
+        complaints: complaintsRes.data.length,
+        contracts: contractsRes.data.items ? contractsRes.data.items.length : 0
       });
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);

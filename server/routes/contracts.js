@@ -9,7 +9,7 @@ const router = express.Router();
 // Configurar multer para archivos Excel en memoria
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = /xls|xlsx/;
     const extname = allowedTypes.test(file.originalname.toLowerCase().split('.').pop());
