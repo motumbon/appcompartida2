@@ -48,6 +48,47 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+// Actualizar permisos de usuario (solo admin)
+router.put('/:id/permissions', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isAdmin: makeAdmin, permissions } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // No permitir modificar al administrador principal
+    if (user.username === 'administrador') {
+      return res.status(403).json({ message: 'No se puede modificar al administrador principal' });
+    }
+
+    // Actualizar permisos
+    if (permissions) {
+      user.permissions = {
+        activities: permissions.activities !== undefined ? permissions.activities : user.permissions.activities,
+        tasks: permissions.tasks !== undefined ? permissions.tasks : user.permissions.tasks,
+        complaints: permissions.complaints !== undefined ? permissions.complaints : user.permissions.complaints,
+        contracts: permissions.contracts !== undefined ? permissions.contracts : user.permissions.contracts,
+        stock: permissions.stock !== undefined ? permissions.stock : user.permissions.stock
+      };
+    }
+
+    // Actualizar isAdmin
+    if (makeAdmin !== undefined) {
+      user.isAdmin = makeAdmin;
+    }
+
+    await user.save();
+    
+    const updatedUser = await User.findById(id).select('-password');
+    res.json({ message: 'Permisos actualizados exitosamente', user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar permisos', error: error.message });
+  }
+});
+
 // Eliminar usuario (solo admin)
 router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
   try {

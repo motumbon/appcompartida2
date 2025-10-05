@@ -38,6 +38,28 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  permissions: {
+    activities: {
+      type: Boolean,
+      default: true
+    },
+    tasks: {
+      type: Boolean,
+      default: true
+    },
+    complaints: {
+      type: Boolean,
+      default: true
+    },
+    contracts: {
+      type: Boolean,
+      default: true
+    },
+    stock: {
+      type: Boolean,
+      default: true
+    }
+  },
   contacts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Contact'

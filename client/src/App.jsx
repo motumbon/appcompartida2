@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
+import PermissionRoute from './components/PermissionRoute';
 import Layout from './components/Layout';
 
 // Pages
@@ -51,9 +52,11 @@ function App() {
             path="/activities"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Activities />
-                </Layout>
+                <PermissionRoute permission="activities">
+                  <Layout>
+                    <Activities />
+                  </Layout>
+                </PermissionRoute>
               </PrivateRoute>
             }
           />
@@ -61,9 +64,11 @@ function App() {
             path="/tasks"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Tasks />
-                </Layout>
+                <PermissionRoute permission="tasks">
+                  <Layout>
+                    <Tasks />
+                  </Layout>
+                </PermissionRoute>
               </PrivateRoute>
             }
           />
@@ -71,9 +76,11 @@ function App() {
             path="/complaints"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Complaints />
-                </Layout>
+                <PermissionRoute permission="complaints">
+                  <Layout>
+                    <Complaints />
+                  </Layout>
+                </PermissionRoute>
               </PrivateRoute>
             }
           />
@@ -81,9 +88,11 @@ function App() {
             path="/contracts"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Contracts />
-                </Layout>
+                <PermissionRoute permission="contracts">
+                  <Layout>
+                    <Contracts />
+                  </Layout>
+                </PermissionRoute>
               </PrivateRoute>
             }
           />
@@ -91,9 +100,11 @@ function App() {
             path="/stock"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Stock />
-                </Layout>
+                <PermissionRoute permission="stock">
+                  <Layout>
+                    <Stock />
+                  </Layout>
+                </PermissionRoute>
               </PrivateRoute>
             }
           />

@@ -17,15 +17,27 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const menuItems = [
-    { path: '/', label: 'Inicio', icon: Home },
-    { path: '/contacts', label: 'Contactos', icon: UserCircle },
-    { path: '/activities', label: 'Actividades', icon: Calendar },
-    { path: '/tasks', label: 'Tareas', icon: CheckSquare },
-    { path: '/complaints', label: 'Reclamos', icon: AlertCircle },
-    { path: '/contracts', label: 'Contratos', icon: FileText },
-    { path: '/stock', label: 'Status BO', icon: Package },
+  // Filtrar menú según permisos del usuario
+  const allMenuItems = [
+    { path: '/', label: 'Inicio', icon: Home, permission: null },
+    { path: '/contacts', label: 'Contactos', icon: UserCircle, permission: null },
+    { path: '/activities', label: 'Actividades', icon: Calendar, permission: 'activities' },
+    { path: '/tasks', label: 'Tareas', icon: CheckSquare, permission: 'tasks' },
+    { path: '/complaints', label: 'Reclamos', icon: AlertCircle, permission: 'complaints' },
+    { path: '/contracts', label: 'Contratos', icon: FileText, permission: 'contracts' },
+    { path: '/stock', label: 'Status BO', icon: Package, permission: 'stock' },
   ];
+
+  const menuItems = allMenuItems.filter(item => {
+    // Siempre mostrar items sin permiso requerido (Inicio, Contactos)
+    if (!item.permission) return true;
+    
+    // Si es admin, mostrar todo
+    if (isAdmin) return true;
+    
+    // Verificar permisos del usuario
+    return user?.permissions?.[item.permission] !== false;
+  });
 
   const adminMenuItems = [
     { path: '/admin/users', label: 'Gestión de Usuarios', icon: Users },
