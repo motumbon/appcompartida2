@@ -7,7 +7,14 @@ const router = express.Router();
 // Obtener todas las notas del usuario actual
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const notes = await Note.find({ createdBy: req.user._id })
+    // Obtener notas creadas por el usuario o compartidas con él
+    const notes = await Note.find({
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    })
+      .populate('createdBy', 'username email')
       .populate('sharedWith', 'username email')
       .sort({ createdAt: -1 });
     

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { StickyNote, Plus, Edit2, Trash2, X, Share2, Clock } from 'lucide-react';
+import { StickyNote, Plus, Edit2, Trash2, X, Share2, Clock, User } from 'lucide-react';
 import { notesAPI, contactsAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
 import moment from 'moment';
 
 const Notes = () => {
+  const { user } = useAuth();
   const [notes, setNotes] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -103,6 +105,16 @@ const Notes = () => {
     }));
   };
 
+  // Verificar si la nota es compartida (no creada por el usuario actual)
+  const isSharedNote = (note) => {
+    const creatorId = note.createdBy?._id?.toString() || note.createdBy?.toString() || note.createdBy;
+    const currentUserId = user?._id?.toString() || user?._id;
+    if (!creatorId || !currentUserId) return false;
+    return creatorId !== currentUserId && 
+           Array.isArray(note.sharedWith) && 
+           note.sharedWith.some(u => (u._id?.toString() || u._id || u.toString()) === currentUserId);
+  };
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -138,32 +150,47 @@ const Notes = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {notes.map((note) => (
-            <div
-              key={note._id}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-5 border-l-4 border-blue-500"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-semibold text-gray-800 flex-1 pr-2">
-                  {note.subject}
-                </h3>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleEdit(note)}
-                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(note._id)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+          {notes.map((note) => {
+            const isShared = isSharedNote(note);
+            return (
+              <div
+                key={note._id}
+                className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-5 border-l-4 ${
+                  isShared ? 'border-green-500' : 'border-blue-500'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-lg font-semibold text-gray-800 flex-1 pr-2">
+                    {note.subject}
+                  </h3>
+                  {!isShared && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(note)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Editar"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(note._id)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {isShared && note.createdBy && (
+                  <div className="mb-2">
+                    <div className="flex items-center gap-1 text-xs text-gray-600 bg-green-50 px-2 py-1 rounded">
+                      <User size={12} />
+                      <span>Creado por: <span className="font-medium">{note.createdBy.username}</span></span>
+                    </div>
+                  </div>
+                )}
 
               <p className="text-gray-600 text-sm mb-4 whitespace-pre-wrap line-clamp-4">
                 {note.comment}
@@ -196,7 +223,8 @@ const Notes = () => {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
