@@ -34,7 +34,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
+      console.log('🔐 Intentando login...', { username: credentials.usernameOrEmail });
       const response = await authAPI.login(credentials);
+      console.log('✅ Respuesta del servidor:', response.status);
       
       // Verificar si está pendiente de aprobación
       if (response.data.pending) {
@@ -47,14 +49,28 @@ export const AuthProvider = ({ children }) => {
       
       const { token, user } = response.data;
       
+      if (!token || !user) {
+        console.error('❌ Respuesta inválida del servidor:', response.data);
+        return {
+          success: false,
+          message: 'Respuesta inválida del servidor'
+        };
+      }
+      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       
       setToken(token);
       setUser(user);
       
+      console.log('✅ Login exitoso');
       return { success: true };
     } catch (error) {
+      console.error('❌ Error en login:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error message:', error.message);
+      
       // Verificar si es error de aprobación pendiente
       if (error.response?.status === 403 && error.response?.data?.pending) {
         return { 
@@ -64,9 +80,17 @@ export const AuthProvider = ({ children }) => {
         };
       }
       
+      // Error de red
+      if (!error.response) {
+        return {
+          success: false,
+          message: 'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+        };
+      }
+      
       return { 
         success: false, 
-        message: error.response?.data?.message || 'Error al iniciar sesión' 
+        message: error.response?.data?.message || error.message || 'Error al iniciar sesión' 
       };
     }
   };

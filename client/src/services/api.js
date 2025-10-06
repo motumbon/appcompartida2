@@ -2,11 +2,16 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+console.log('🌐 API URL configurada:', API_URL);
+console.log('🔧 Environment:', import.meta.env.MODE);
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  timeout: 30000 // 30 segundos
 });
 
 // Interceptor para agregar el token a todas las peticiones

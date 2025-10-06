@@ -63,12 +63,30 @@ router.post('/login', [
   body('password').notEmpty().withMessage('Contraseña es requerida')
 ], async (req, res) => {
   try {
+    // Log detallado para debug
+    console.log('=== LOGIN REQUEST ===');
+    console.log('Headers:', {
+      'user-agent': req.headers['user-agent'],
+      'content-type': req.headers['content-type'],
+      'origin': req.headers['origin'],
+      'referer': req.headers['referer']
+    });
+    console.log('Body:', JSON.stringify(req.body));
+    console.log('Body keys:', Object.keys(req.body));
+    console.log('==================');
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error('Validation errors:', errors.array());
+      return res.status(400).json({ 
+        errors: errors.array(),
+        message: errors.array()[0]?.msg || 'Error de validación'
+      });
     }
 
     const { usernameOrEmail, password } = req.body;
+
+    console.log('Login attempt for:', usernameOrEmail);
 
     // Buscar usuario por username o email
     const user = await User.findOne({
@@ -76,17 +94,24 @@ router.post('/login', [
     });
 
     if (!user) {
+      console.error('User not found:', usernameOrEmail);
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
+
+    console.log('User found:', user.username);
 
     // Verificar contraseña
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
+      console.error('Invalid password for user:', user.username);
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
+    console.log('Password valid for user:', user.username);
+
     // Verificar si el usuario está aprobado (excepto admin)
     if (!user.approved && !user.isAdmin) {
+      console.log('User pending approval:', user.username);
       return res.status(403).json({ 
         message: 'Tu cuenta está pendiente de aprobación por un administrador',
         pending: true
@@ -95,6 +120,8 @@ router.post('/login', [
 
     // Generar token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    console.log('Login successful for:', user.username);
 
     res.json({
       message: 'Login exitoso',
