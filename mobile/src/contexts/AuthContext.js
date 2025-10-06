@@ -39,7 +39,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
+      console.log('Intentando login...');
       const response = await authAPI.login(credentials);
+      console.log('Login exitoso');
       const { token: newToken, user: newUser } = response.data;
       
       await SecureStore.setItemAsync('token', newToken);
@@ -50,9 +52,20 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      console.error('Error en login:', error.message);
+      let errorMessage = 'Error al iniciar sesión';
+      
+      if (!error.response) {
+        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
+      } else if (error.response.status === 404) {
+        errorMessage = 'Servidor no encontrado. Verifica la configuración de la API.';
+      } else if (error.response.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al iniciar sesión'
+        message: errorMessage
       };
     }
   };
@@ -86,6 +99,17 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getCurrentUser();
+      const updatedUser = response.data;
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Error al refrescar usuario:', error);
+    }
+  };
+
   const value = {
     user,
     token,
@@ -93,6 +117,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!token,
     isAdmin: user?.isAdmin || false
   };

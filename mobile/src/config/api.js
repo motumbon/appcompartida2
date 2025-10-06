@@ -2,10 +2,17 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000/api';
+// Configuración de la API URL con fallback
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 
+                Constants.manifest?.extra?.apiUrl || 
+                Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||
+                'https://appcompartida2-production.up.railway.app/api';
+
+console.log('API URL configurada:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 segundos de timeout
   headers: {
     'Content-Type': 'application/json'
   }
@@ -23,14 +30,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor para manejar errores de autenticación
+// Interceptor para manejar errores de autenticación y conexión
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    console.log('Error en API:', error.message);
+    
+    // Error de red o timeout
+    if (!error.response) {
+      console.error('Error de conexión a la API:', API_URL);
+      error.message = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
+    }
+    
+    // Error 401/403 - No autenticado
     if (error.response?.status === 401 || error.response?.status === 403) {
       await SecureStore.deleteItemAsync('token');
       await SecureStore.deleteItemAsync('user');
     }
+    
     return Promise.reject(error);
   }
 );

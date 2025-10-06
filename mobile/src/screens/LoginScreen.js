@@ -61,12 +61,6 @@ export default function LoginScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={styles.link}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
-
-        <View style={styles.testCredentials}>
-          <Text style={styles.testTitle}>Usuario de prueba:</Text>
-          <Text style={styles.testText}>Usuario: administrador</Text>
-          <Text style={styles.testText}>Contraseña: 1234567</Text>
-        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -122,20 +116,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: 14,
-  },
-  testCredentials: {
-    marginTop: 30,
-    padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
-  },
-  testTitle: {
-    color: '#fff',
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  testText: {
-    color: '#fff',
-    fontSize: 12,
   },
 });
