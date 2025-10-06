@@ -109,7 +109,8 @@ router.post('/login', [
           tasks: true,
           complaints: true,
           contracts: true,
-          stock: true
+          stock: true,
+          notes: true
         }
       }
     });
@@ -134,7 +135,8 @@ router.get('/me', authenticateToken, async (req, res) => {
         tasks: true,
         complaints: true,
         contracts: true,
-        stock: true
+        stock: true,
+        notes: true
       }
     });
   } catch (error) {

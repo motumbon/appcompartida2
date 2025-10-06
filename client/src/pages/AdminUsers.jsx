@@ -95,6 +95,7 @@ const AdminUsers = () => {
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Reclamos</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Contratos</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status BO</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Notas</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
@@ -105,7 +106,8 @@ const AdminUsers = () => {
                   tasks: true,
                   complaints: true,
                   contracts: true,
-                  stock: true
+                  stock: true,
+                  notes: true
                 };
 
                 return (
@@ -175,6 +177,15 @@ const AdminUsers = () => {
                         type="checkbox"
                         checked={permissions.stock}
                         onChange={(e) => handlePermissionChange(user._id, user.username, 'stock', e.target.checked)}
+                        disabled={user.username === 'administrador'}
+                        className={`w-4 h-4 ${user.username === 'administrador' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                      />
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={permissions.notes}
+                        onChange={(e) => handlePermissionChange(user._id, user.username, 'notes', e.target.checked)}
                         disabled={user.username === 'administrador'}
                         className={`w-4 h-4 ${user.username === 'administrador' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                       />

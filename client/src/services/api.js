@@ -165,4 +165,12 @@ export const stockAPI = {
   deleteStock: () => api.delete('/stock')
 };
 
+// Notes API
+export const notesAPI = {
+  getNotes: () => api.get('/notes'),
+  createNote: (noteData) => api.post('/notes', noteData),
+  updateNote: (id, noteData) => api.put(`/notes/${id}`, noteData),
+  deleteNote: (id) => api.delete(`/notes/${id}`)
+};
+
 export default api;

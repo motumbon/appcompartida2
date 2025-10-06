@@ -14,6 +14,7 @@ import Tasks from './pages/Tasks';
 import Complaints from './pages/Complaints';
 import Contracts from './pages/Contracts';
 import Stock from './pages/Stock';
+import Notes from './pages/Notes';
 import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminInstitutions from './pages/AdminInstitutions';
@@ -104,6 +105,18 @@ function App() {
                 <PermissionRoute permission="stock">
                   <Layout>
                     <Stock />
+                  </Layout>
+                </PermissionRoute>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/notes"
+            element={
+              <PrivateRoute>
+                <PermissionRoute permission="notes">
+                  <Layout>
+                    <Notes />
                   </Layout>
                 </PermissionRoute>
               </PrivateRoute>

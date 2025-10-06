@@ -71,6 +71,10 @@ const userSchema = new mongoose.Schema({
     stock: {
       type: Boolean,
       default: true
+    },
+    notes: {
+      type: Boolean,
+      default: true
     }
   },
   contacts: [{
