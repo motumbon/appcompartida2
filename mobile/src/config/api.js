@@ -103,6 +103,7 @@ export const complaintsAPI = {
 };
 
 export const contractsAPI = {
+  getAll: () => api.get('/contracts'),
   getContracts: () => api.get('/contracts')
 };
 

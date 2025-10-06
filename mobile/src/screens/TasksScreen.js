@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { tasksAPI } from '../config/api';
 
 export default function TasksScreen() {
   const [tasks, setTasks] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'media',
+    status: 'pendiente',
+    dueDate: ''
+  });
 
   useEffect(() => {
     loadTasks();
@@ -24,6 +32,23 @@ export default function TasksScreen() {
     setRefreshing(true);
     await loadTasks();
     setRefreshing(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.title) {
+      Alert.alert('Error', 'El título es requerido');
+      return;
+    }
+
+    try {
+      await tasksAPI.create(formData);
+      Alert.alert('Éxito', 'Tarea creada correctamente');
+      setModalVisible(false);
+      setFormData({ title: '', description: '', priority: 'media', status: 'pendiente', dueDate: '' });
+      loadTasks();
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.message || 'No se pudo crear la tarea');
+    }
   };
 
   const getPriorityColor = (priority) => {
@@ -98,6 +123,45 @@ export default function TasksScreen() {
           </View>
         }
       />
+
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+        <Ionicons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nueva Tarea</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalForm}>
+              <Text style={styles.label}>Título *</Text>
+              <TextInput style={styles.input} value={formData.title} onChangeText={(text) => setFormData({ ...formData, title: text })} placeholder="Título de la tarea" />
+              <Text style={styles.label}>Descripción</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(text) => setFormData({ ...formData, description: text })} placeholder="Descripción" multiline numberOfLines={4} />
+              <Text style={styles.label}>Prioridad</Text>
+              <View style={styles.priorityButtons}>
+                {['baja', 'media', 'alta', 'urgente'].map((priority) => (
+                  <TouchableOpacity key={priority} style={[styles.priorityButton, formData.priority === priority && styles.priorityButtonActive]} onPress={() => setFormData({ ...formData, priority })}>
+                    <Text style={[styles.priorityButtonText, formData.priority === priority && styles.priorityButtonTextActive]}>{priority}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={[styles.button, styles.buttonCancel]} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.buttonCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.buttonSubmit]} onPress={handleSubmit}>
+                  <Text style={styles.buttonSubmitText}>Crear</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -175,4 +239,24 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     marginTop: 10,
   },
+  fab: { position: 'absolute', right: 16, bottom: 16, width: 56, height: 56, borderRadius: 28, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+  modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1f2937' },
+  modalForm: { flex: 1 },
+  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  input: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 16 },
+  textArea: { height: 100, textAlignVertical: 'top' },
+  priorityButtons: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
+  priorityButton: { flex: 1, minWidth: '45%', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center' },
+  priorityButtonActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  priorityButtonText: { fontSize: 12, color: '#6b7280', textTransform: 'capitalize' },
+  priorityButtonTextActive: { color: '#fff', fontWeight: '600' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  button: { flex: 1, padding: 16, borderRadius: 8, alignItems: 'center' },
+  buttonCancel: { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#d1d5db' },
+  buttonCancelText: { fontSize: 16, fontWeight: '600', color: '#374151' },
+  buttonSubmit: { backgroundColor: '#3b82f6' },
+  buttonSubmitText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });
