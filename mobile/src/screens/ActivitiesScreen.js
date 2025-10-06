@@ -13,6 +13,8 @@ export default function ActivitiesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [lastTap, setLastTap] = useState(null);
   
   // Filtros
   const [viewMode, setViewMode] = useState('list'); // 'list', 'pending', 'completed'
@@ -24,7 +26,9 @@ export default function ActivitiesScreen() {
     comment: '',
     status: 'pendiente',
     institution: '',
-    sharedWith: []
+    sharedWith: [],
+    scheduledDate: '',
+    scheduledTime: ''
   });
   const [selectedUsers, setSelectedUsers] = useState([]);
 
@@ -82,14 +86,55 @@ export default function ActivitiesScreen() {
         sharedWith: selectedUsers
       };
 
-      await activitiesAPI.create(dataToSend);
-      Alert.alert('Éxito', 'Actividad creada correctamente');
-      setModalVisible(false);
-      setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [] });
-      setSelectedUsers([]);
+      // Agregar fecha y hora si están definidas
+      if (formData.scheduledDate && formData.scheduledTime) {
+        dataToSend.scheduledDate = `${formData.scheduledDate}T${formData.scheduledTime}`;
+      }
+
+      if (editingActivity) {
+        await activitiesAPI.update(editingActivity._id, dataToSend);
+        Alert.alert('Éxito', 'Actividad actualizada correctamente');
+      } else {
+        await activitiesAPI.create(dataToSend);
+        Alert.alert('Éxito', 'Actividad creada correctamente');
+      }
+      
+      handleCloseModal();
       loadActivities();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'No se pudo crear la actividad');
+      Alert.alert('Error', error.response?.data?.message || 'No se pudo guardar la actividad');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setEditingActivity(null);
+    setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [], scheduledDate: '', scheduledTime: '' });
+    setSelectedUsers([]);
+  };
+
+  const handleEdit = (activity) => {
+    setEditingActivity(activity);
+    setFormData({
+      subject: activity.subject,
+      comment: activity.comment || '',
+      status: activity.status,
+      institution: activity.institution?._id || '',
+      sharedWith: activity.sharedWith?.map(u => u._id) || [],
+      scheduledDate: activity.scheduledDate ? activity.scheduledDate.split('T')[0] : '',
+      scheduledTime: activity.scheduledDate ? activity.scheduledDate.split('T')[1]?.substring(0, 5) : ''
+    });
+    setSelectedUsers(activity.sharedWith?.map(u => u._id) || []);
+    setModalVisible(true);
+  };
+
+  const handleDoubleTap = (activity) => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
+      handleEdit(activity);
+    } else {
+      setLastTap(now);
     }
   };
 
@@ -170,10 +215,14 @@ export default function ActivitiesScreen() {
   const filteredActivities = getFilteredActivities();
 
   const renderActivity = ({ item }) => (
-    <View style={[
-      styles.card,
-      isSharedWithMe(item) && styles.cardShared
-    ]}>
+    <TouchableOpacity
+      onPress={() => handleDoubleTap(item)}
+      activeOpacity={0.7}
+      style={[
+        styles.card,
+        isSharedWithMe(item) && styles.cardShared
+      ]}
+    >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{item.subject}</Text>
@@ -233,7 +282,7 @@ export default function ActivitiesScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -309,8 +358,10 @@ export default function ActivitiesScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nueva Actividad</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalTitle}>
+                {editingActivity ? 'Editar Actividad' : 'Nueva Actividad'}
+              </Text>
+              <TouchableOpacity onPress={handleCloseModal}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
@@ -332,6 +383,22 @@ export default function ActivitiesScreen() {
                 placeholder="Descripción de la actividad"
                 multiline
                 numberOfLines={4}
+              />
+
+              <Text style={styles.label}>Fecha programada</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.scheduledDate}
+                onChangeText={(text) => setFormData({ ...formData, scheduledDate: text })}
+                placeholder="YYYY-MM-DD"
+              />
+
+              <Text style={styles.label}>Hora programada</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.scheduledTime}
+                onChangeText={(text) => setFormData({ ...formData, scheduledTime: text })}
+                placeholder="HH:MM (ej: 14:30)"
               />
 
               <Text style={styles.label}>Institución</Text>

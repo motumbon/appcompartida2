@@ -12,13 +12,16 @@ import {
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { contactsAPI } from '../config/api';
+import { contactsAPI, usersAPI, institutionsAPI } from '../config/api';
 
 export default function ContactsScreen() {
   const [contacts, setContacts] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
+  const [userInstitutions, setUserInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [institutionsModalVisible, setInstitutionsModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -29,6 +32,8 @@ export default function ContactsScreen() {
 
   useEffect(() => {
     loadContacts();
+    loadInstitutions();
+    loadUserInstitutions();
   }, []);
 
   const loadContacts = async () => {
@@ -41,6 +46,57 @@ export default function ContactsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const loadInstitutions = async () => {
+    try {
+      const response = await institutionsAPI.getAll();
+      setInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones:', error);
+    }
+  };
+
+  const loadUserInstitutions = async () => {
+    try {
+      const response = await usersAPI.getUserInstitutions();
+      setUserInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones del usuario:', error);
+    }
+  };
+
+  const handleLinkInstitution = async (institutionId) => {
+    try {
+      await usersAPI.linkInstitution(institutionId);
+      Alert.alert('Éxito', 'Institución vinculada');
+      loadUserInstitutions();
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo vincular la institución');
+    }
+  };
+
+  const handleUnlinkInstitution = async (institutionId) => {
+    Alert.alert(
+      'Desvincular Institución',
+      '¿Estás seguro?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desvincular',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await usersAPI.unlinkInstitution(institutionId);
+              Alert.alert('Éxito', 'Institución desvinculada');
+              loadUserInstitutions();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo desvincular');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleSubmit = async () => {
@@ -150,6 +206,17 @@ export default function ContactsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header con botones */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => setInstitutionsModalVisible(true)}
+        >
+          <Ionicons name="business" size={20} color="#fff" />
+          <Text style={styles.headerButtonText}>Mis Instituciones</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={contacts}
         renderItem={renderContact}
@@ -251,6 +318,64 @@ export default function ContactsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Instituciones */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={institutionsModalVisible}
+        onRequestClose={() => setInstitutionsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mis Instituciones</Text>
+              <TouchableOpacity onPress={() => setInstitutionsModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalForm}>
+              {/* Instituciones Vinculadas */}
+              <Text style={styles.sectionTitle}>Instituciones Vinculadas</Text>
+              {userInstitutions.length === 0 ? (
+                <Text style={styles.emptyText}>No tienes instituciones vinculadas</Text>
+              ) : (
+                userInstitutions.map((inst) => (
+                  <View key={inst._id} style={styles.institutionItem}>
+                    <View style={styles.institutionInfo}>
+                      <Ionicons name="business" size={20} color="#3b82f6" />
+                      <Text style={styles.institutionName}>{inst.name}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleUnlinkInstitution(inst._id)}>
+                      <Ionicons name="close-circle" size={24} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+
+              {/* Todas las Instituciones */}
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Todas las Instituciones</Text>
+              {institutions
+                .filter(inst => !userInstitutions.some(ui => ui._id === inst._id))
+                .map((inst) => (
+                  <View key={inst._id} style={styles.institutionItem}>
+                    <View style={styles.institutionInfo}>
+                      <Ionicons name="business-outline" size={20} color="#6b7280" />
+                      <Text style={styles.institutionName}>{inst.name}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleLinkInstitution(inst._id)}>
+                      <Ionicons name="add-circle" size={24} color="#10b981" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              {institutions.filter(inst => !userInstitutions.some(ui => ui._id === inst._id)).length === 0 && (
+                <Text style={styles.emptyText}>Todas las instituciones están vinculadas</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -259,6 +384,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6'
+  },
+  header: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#14b8a6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  headerButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   centerContainer: {
     flex: 1,
@@ -371,7 +517,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: '85%'
+    height: '85%'
   },
   modalHeader: {
     flexDirection: 'row',
@@ -434,5 +580,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff'
-  }
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  institutionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f9fafb',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  institutionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  institutionName: {
+    fontSize: 15,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
 });
