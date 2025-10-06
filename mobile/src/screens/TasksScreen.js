@@ -1,26 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { tasksAPI } from '../config/api';
+import { tasksAPI, contactsAPI } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TasksScreen() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [lastTap, setLastTap] = useState(null);
+  const [viewMode, setViewMode] = useState('pending'); // 'pending', 'completed', 'assigned'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'media',
     status: 'pendiente',
     dueDate: '',
-    checklist: []
+    checklist: [],
+    sharedWith: []
   });
   const [newCheckItem, setNewCheckItem] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   useEffect(() => {
     loadTasks();
+    loadContacts();
   }, []);
 
   const loadTasks = async () => {
@@ -29,6 +36,15 @@ export default function TasksScreen() {
       setTasks(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar las tareas');
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      const response = await contactsAPI.getAll();
+      setContacts(response.data.filter(c => c.isRegisteredUser && c.userId));
+    } catch (error) {
+      console.error('Error al cargar contactos:', error);
     }
   };
 
@@ -45,11 +61,16 @@ export default function TasksScreen() {
     }
 
     try {
+      const dataToSend = {
+        ...formData,
+        sharedWith: selectedUsers
+      };
+
       if (editingTask) {
-        await tasksAPI.update(editingTask._id, formData);
+        await tasksAPI.update(editingTask._id, dataToSend);
         Alert.alert('Éxito', 'Tarea actualizada correctamente');
       } else {
-        await tasksAPI.create(formData);
+        await tasksAPI.create(dataToSend);
         Alert.alert('Éxito', 'Tarea creada correctamente');
       }
       handleCloseModal();
@@ -63,7 +84,8 @@ export default function TasksScreen() {
     setModalVisible(false);
     setEditingTask(null);
     setNewCheckItem('');
-    setFormData({ title: '', description: '', priority: 'media', status: 'pendiente', dueDate: '', checklist: [] });
+    setSelectedUsers([]);
+    setFormData({ title: '', description: '', priority: 'media', status: 'pendiente', dueDate: '', checklist: [], sharedWith: [] });
   };
 
   const handleEdit = (task) => {
@@ -74,8 +96,10 @@ export default function TasksScreen() {
       priority: task.priority,
       status: task.status,
       dueDate: task.dueDate || '',
-      checklist: task.checklist || []
+      checklist: task.checklist || [],
+      sharedWith: task.sharedWith?.map(u => u._id) || []
     });
+    setSelectedUsers(task.sharedWith?.map(u => u._id) || []);
     setModalVisible(true);
   };
 
@@ -149,6 +173,38 @@ export default function TasksScreen() {
     };
     return colors[status] || '#6b7280';
   };
+
+  const isSharedWithMe = (task) => {
+    if (!task || !task.createdBy || !user) return false;
+    const creatorId = String(task.createdBy?._id || task.createdBy);
+    const currentUserId = String(user?._id || user?.id);
+    return creatorId !== currentUserId &&
+      Array.isArray(task.sharedWith) && task.sharedWith.some(u => String(u._id || u) === currentUserId);
+  };
+
+  const getFilteredTasks = () => {
+    let filtered = tasks;
+
+    if (viewMode === 'pending') {
+      filtered = tasks.filter(t => t.status === 'pendiente');
+    } else if (viewMode === 'completed') {
+      filtered = tasks.filter(t => t.status === 'completada');
+    } else if (viewMode === 'assigned') {
+      filtered = tasks.filter(t => isSharedWithMe(t));
+    }
+
+    return filtered;
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const filteredTasks = getFilteredTasks();
 
   const renderTask = ({ item }) => (
     <TouchableOpacity
@@ -237,8 +293,38 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Filtros */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'pending' && styles.filterButtonActive]}
+            onPress={() => setViewMode('pending')}
+          >
+            <Text style={[styles.filterText, viewMode === 'pending' && styles.filterTextActive]}>
+              Pendientes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'completed' && styles.filterButtonActive]}
+            onPress={() => setViewMode('completed')}
+          >
+            <Text style={[styles.filterText, viewMode === 'completed' && styles.filterTextActive]}>
+              Completadas
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'assigned' && styles.filterButtonActive]}
+            onPress={() => setViewMode('assigned')}
+          >
+            <Text style={[styles.filterText, viewMode === 'assigned' && styles.filterTextActive]}>
+              Asignadas a mí
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={tasks}
+        data={filteredTasks}
         renderItem={renderTask}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
@@ -308,6 +394,28 @@ export default function TasksScreen() {
                   </View>
                 ))}
               </View>
+
+              <Text style={styles.label}>Compartir con</Text>
+              <ScrollView style={styles.sharedWithContainer}>
+                {contacts.length === 0 ? (
+                  <Text style={styles.noContactsText}>No hay contactos registrados</Text>
+                ) : (
+                  contacts.map((contact) => (
+                    <TouchableOpacity
+                      key={contact.userId}
+                      style={styles.contactItem}
+                      onPress={() => toggleUserSelection(contact.userId)}
+                    >
+                      <View style={styles.checkbox}>
+                        {selectedUsers.includes(contact.userId) && (
+                          <Ionicons name="checkmark" size={18} color="#3b82f6" />
+                        )}
+                      </View>
+                      <Text style={styles.userName}>{contact.name}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
 
               <Text style={styles.label}>Prioridad</Text>
               <View style={styles.priorityButtons}>
@@ -534,5 +642,56 @@ const styles = StyleSheet.create({
   checklistTextCompleted: {
     textDecorationLine: 'line-through',
     color: '#9ca3af',
+  },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  filterButtonActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  filterTextActive: {
+    color: '#fff',
+  },
+  sharedWithContainer: {
+    maxHeight: 150,
+    marginBottom: 16,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  userName: {
+    fontSize: 15,
+    color: '#1f2937',
+  },
+  noContactsText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });

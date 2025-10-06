@@ -129,4 +129,17 @@ export const notesAPI = {
   deleteNote: (id) => api.delete(`/notes/${id}`)
 };
 
+export const usersAPI = {
+  getUserInstitutions: () => api.get('/users/institutions'),
+  linkInstitution: (institutionId) => api.post(`/users/institutions/${institutionId}`),
+  unlinkInstitution: (institutionId) => api.delete(`/users/institutions/${institutionId}`)
+};
+
+export const institutionsAPI = {
+  getAll: () => api.get('/institutions'),
+  create: (data) => api.post('/institutions', data),
+  update: (id, data) => api.put(`/institutions/${id}`, data),
+  delete: (id) => api.delete(`/institutions/${id}`)
+};
+
 export default api;

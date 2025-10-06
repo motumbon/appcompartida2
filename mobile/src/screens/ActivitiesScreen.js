@@ -784,8 +784,8 @@ const styles = StyleSheet.create({
   },
   statusChangeText: {
     fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: '#1f2937',
+    fontWeight: '600',
   },
   statusChangeTextActive: {
     color: '#fff',
