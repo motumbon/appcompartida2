@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Modal, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { Calendar } from 'react-native-calendars';
 import { activitiesAPI, contactsAPI, usersAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,7 +18,7 @@ export default function ActivitiesScreen() {
   const [lastTap, setLastTap] = useState(null);
   
   // Filtros
-  const [viewMode, setViewMode] = useState('list'); // 'list', 'pending', 'completed'
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'pending', 'completed', 'calendar'
   const [filterUser, setFilterUser] = useState('all'); // 'all', 'mine', or userId
   const [filterInstitution, setFilterInstitution] = useState('all'); // 'all' or institutionId
   
@@ -214,6 +215,31 @@ export default function ActivitiesScreen() {
 
   const filteredActivities = getFilteredActivities();
 
+  const getMarkedDates = () => {
+    const marked = {};
+    filteredActivities.forEach(activity => {
+      if (activity.scheduledDate) {
+        const date = activity.scheduledDate.split('T')[0];
+        if (!marked[date]) {
+          marked[date] = {
+            marked: true,
+            dots: []
+          };
+        }
+        marked[date].dots.push({
+          color: activity.status === 'completada' ? '#10b981' : '#f59e0b',
+          selectedDotColor: activity.status === 'completada' ? '#10b981' : '#f59e0b'
+        });
+      }
+    });
+    return marked;
+  };
+
+  const handleDayPress = (day) => {
+    setFormData({ ...formData, scheduledDate: day.dateString, scheduledTime: '09:00' });
+    setModalVisible(true);
+  };
+
   const renderActivity = ({ item }) => (
     <TouchableOpacity
       onPress={() => handleDoubleTap(item)}
@@ -314,6 +340,14 @@ export default function ActivitiesScreen() {
               Completadas
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewModeButton, viewMode === 'calendar' && styles.viewModeButtonActive]}
+            onPress={() => setViewMode('calendar')}
+          >
+            <Text style={[styles.viewModeText, viewMode === 'calendar' && styles.viewModeTextActive]}>
+              Calendario
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
         
         <TouchableOpacity
@@ -327,23 +361,97 @@ export default function ActivitiesScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredActivities}
-        renderItem={renderActivity}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>
-              {viewMode === 'pending' && 'No hay actividades pendientes'}
-              {viewMode === 'completed' && 'No hay actividades completadas'}
-              {viewMode === 'list' && 'No hay actividades'}
-            </Text>
+      {/* Calendar View */}
+      {viewMode === 'calendar' ? (
+        <ScrollView style={styles.calendarContainer}>
+          <Calendar
+            markedDates={getMarkedDates()}
+            onDayPress={handleDayPress}
+            markingType={'multi-dot'}
+            theme={{
+              todayTextColor: '#3b82f6',
+              selectedDayBackgroundColor: '#3b82f6',
+              selectedDayTextColor: '#ffffff',
+              arrowColor: '#3b82f6',
+              monthTextColor: '#1f2937',
+              textMonthFontSize: 18,
+              textMonthFontWeight: 'bold',
+            }}
+          />
+          
+          <View style={styles.calendarLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
+              <Text style={styles.legendText}>Pendiente</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+              <Text style={styles.legendText}>Completada</Text>
+            </View>
           </View>
-        }
-      />
+
+          <View style={styles.calendarActivitiesList}>
+            <Text style={styles.calendarListTitle}>Actividades programadas</Text>
+            {filteredActivities
+              .filter(a => a.scheduledDate)
+              .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
+              .map((activity) => (
+                <TouchableOpacity
+                  key={activity._id}
+                  onPress={() => handleEdit(activity)}
+                  style={[styles.calendarActivityCard, isSharedWithMe(activity) && styles.cardShared]}
+                >
+                  <View style={styles.calendarActivityHeader}>
+                    <Text style={styles.calendarActivityDate}>
+                      {new Date(activity.scheduledDate).toLocaleDateString('es', { 
+                        weekday: 'short', 
+                        day: 'numeric', 
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                    <View style={[styles.badge, { backgroundColor: getStatusColor(activity.status) }]}>
+                      <Text style={styles.badgeText}>
+                        {activity.status === 'pendiente' ? 'Pendiente' : 'Completada'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.calendarActivityTitle}>{activity.subject}</Text>
+                  {activity.comment && (
+                    <Text style={styles.calendarActivityComment} numberOfLines={1}>
+                      {activity.comment}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            {filteredActivities.filter(a => a.scheduledDate).length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
+                <Text style={styles.emptyText}>No hay actividades programadas</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={filteredActivities}
+          renderItem={renderActivity}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
+              <Text style={styles.emptyText}>
+                {viewMode === 'pending' && 'No hay actividades pendientes'}
+                {viewMode === 'completed' && 'No hay actividades completadas'}
+                {viewMode === 'list' && 'No hay actividades'}
+              </Text>
+            </View>
+          }
+        />
+      )}
 
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <Ionicons name="add" size={24} color="#fff" />
@@ -830,5 +938,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  calendarContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  calendarLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#f9fafb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    gap: 24,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  calendarActivitiesList: {
+    padding: 16,
+  },
+  calendarListTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  calendarActivityCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
+  },
+  calendarActivityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  calendarActivityDate: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  calendarActivityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  calendarActivityComment: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 });
