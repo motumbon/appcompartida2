@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
 // Configuración de la API URL - Railway siempre usa HTTPS
-const BASE_API_URL = 'https://appcompartida2-production.up.railway.app';
+const BASE_API_URL = 'https://web-production-10bfc.up.railway.app';
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 
                 Constants.manifest?.extra?.apiUrl || 
                 Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||

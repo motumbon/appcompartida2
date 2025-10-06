@@ -43,7 +43,7 @@ npm install
 Editar `app.json` y actualizar la URL de tu backend en Railway:
 ```json
 "extra": {
-  "apiUrl": "https://appcompartida2-production.up.railway.app/api"
+  "apiUrl": "https://web-production-10bfc.up.railway.app/api"
 }
 ```
 
