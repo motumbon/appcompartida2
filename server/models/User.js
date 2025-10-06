@@ -89,6 +89,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  quickAccessItems: {
+    type: [String],
+    default: ['contacts', 'activities', 'tasks', 'complaints', 'contracts']
+  },
   createdAt: {
     type: Date,
     default: Date.now

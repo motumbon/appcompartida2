@@ -43,7 +43,8 @@ export const authAPI = {
   getCurrentUser: () => api.get('/auth/me'),
   getPendingUsers: () => api.get('/auth/pending-users'),
   approveUser: (userId) => api.post(`/auth/approve-user/${userId}`),
-  rejectUser: (userId) => api.delete(`/auth/reject-user/${userId}`)
+  rejectUser: (userId) => api.delete(`/auth/reject-user/${userId}`),
+  updateQuickAccess: (quickAccessItems) => api.put('/auth/quick-access', { quickAccessItems })
 };
 
 // Users API

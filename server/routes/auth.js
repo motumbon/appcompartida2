@@ -137,7 +137,8 @@ router.get('/me', authenticateToken, async (req, res) => {
         contracts: true,
         stock: true,
         notes: true
-      }
+      },
+      quickAccessItems: req.user.quickAccessItems || ['contacts', 'activities', 'tasks', 'complaints', 'contracts']
     });
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener usuario', error: error.message });
@@ -199,6 +200,30 @@ router.delete('/reject-user/:userId', authenticateToken, async (req, res) => {
     res.json({ message: 'Usuario rechazado y eliminado exitosamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al rechazar usuario', error: error.message });
+  }
+});
+
+// Actualizar accesos rápidos del usuario
+router.put('/quick-access', authenticateToken, async (req, res) => {
+  try {
+    const { quickAccessItems } = req.body;
+
+    if (!Array.isArray(quickAccessItems)) {
+      return res.status(400).json({ message: 'quickAccessItems debe ser un array' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { quickAccessItems },
+      { new: true }
+    );
+
+    res.json({ 
+      message: 'Accesos rápidos actualizados exitosamente',
+      quickAccessItems: user.quickAccessItems
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar accesos rápidos', error: error.message });
   }
 });
 
