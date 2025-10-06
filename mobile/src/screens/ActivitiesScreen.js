@@ -1,21 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Modal, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { activitiesAPI } from '../config/api';
+import { Picker } from '@react-native-picker/picker';
+import { activitiesAPI, contactsAPI, usersAPI } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ActivitiesScreen() {
+  const { user } = useAuth();
   const [activities, setActivities] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  
+  // Filtros
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'pending', 'completed'
+  const [filterUser, setFilterUser] = useState('all'); // 'all', 'mine', or userId
+  const [filterInstitution, setFilterInstitution] = useState('all'); // 'all' or institutionId
+  
   const [formData, setFormData] = useState({
     subject: '',
     comment: '',
     status: 'pendiente',
-    scheduledDate: ''
+    institution: '',
+    sharedWith: []
   });
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   useEffect(() => {
     loadActivities();
+    loadContacts();
+    loadInstitutions();
   }, []);
 
   const loadActivities = async () => {
@@ -24,6 +40,24 @@ export default function ActivitiesScreen() {
       setActivities(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar las actividades');
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      const response = await contactsAPI.getAll();
+      setContacts(response.data.filter(c => c.isRegisteredUser && c.userId));
+    } catch (error) {
+      console.error('Error al cargar contactos:', error);
+    }
+  };
+
+  const loadInstitutions = async () => {
+    try {
+      const response = await usersAPI.getUserInstitutions();
+      setInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones:', error);
     }
   };
 
@@ -40,32 +74,120 @@ export default function ActivitiesScreen() {
     }
 
     try {
-      await activitiesAPI.create(formData);
+      const dataToSend = {
+        subject: formData.subject,
+        comment: formData.comment,
+        status: formData.status,
+        institution: formData.institution || undefined,
+        sharedWith: selectedUsers
+      };
+
+      await activitiesAPI.create(dataToSend);
       Alert.alert('Éxito', 'Actividad creada correctamente');
       setModalVisible(false);
-      setFormData({ subject: '', comment: '', status: 'pendiente', scheduledDate: '' });
+      setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [] });
+      setSelectedUsers([]);
       loadActivities();
     } catch (error) {
       Alert.alert('Error', error.response?.data?.message || 'No se pudo crear la actividad');
     }
   };
 
+  const handleStatusChange = async (activity, newStatus) => {
+    try {
+      await activitiesAPI.update(activity._id, { status: newStatus });
+      loadActivities();
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo actualizar el estado');
+    }
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => {
+      if (prev.includes(userId)) {
+        return prev.filter(id => id !== userId);
+      } else {
+        return [...prev, userId];
+      }
+    });
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       pendiente: '#f59e0b',
-      en_progreso: '#3b82f6',
-      completada: '#10b981',
-      cancelada: '#ef4444'
+      completada: '#10b981'
     };
     return colors[status] || '#6b7280';
   };
 
+  const getFilteredActivities = () => {
+    let filtered = activities;
+
+    // Aplicar filtro de vista
+    if (viewMode === 'completed') {
+      filtered = filtered.filter(a => a.status === 'completada');
+    } else if (viewMode === 'pending') {
+      filtered = filtered.filter(a => a.status === 'pendiente');
+    } else if (viewMode === 'list') {
+      // Lista muestra todas menos completadas
+      filtered = filtered.filter(a => a.status !== 'completada');
+    }
+
+    // Aplicar filtro de usuario
+    if (filterUser === 'mine') {
+      filtered = filtered.filter(a => {
+        if (!a || !a.createdBy || !user) return false;
+        const activityCreatorId = String(a.createdBy?._id || a.createdBy);
+        const currentUserId = String(user?._id || user?.id);
+        const isMyActivity = activityCreatorId === currentUserId;
+        const isNotShared = !a.sharedWith || a.sharedWith.length === 0;
+        return isMyActivity && isNotShared;
+      });
+    } else if (filterUser !== 'all') {
+      filtered = filtered.filter(a =>
+        a && Array.isArray(a.sharedWith) && a.sharedWith.some(u => u && u._id === filterUser)
+      );
+    }
+
+    // Aplicar filtro de institución
+    if (filterInstitution !== 'all') {
+      filtered = filtered.filter(a =>
+        a.institution && a.institution._id === filterInstitution
+      );
+    }
+
+    return filtered;
+  };
+
+  const isSharedWithMe = (activity) => {
+    if (!activity || !activity.createdBy || !user) return false;
+    const creatorId = String(activity.createdBy?._id || activity.createdBy);
+    const currentUserId = String(user?._id || user?.id);
+    return creatorId !== currentUserId &&
+      Array.isArray(activity.sharedWith) && activity.sharedWith.some(u => String(u._id || u) === currentUserId);
+  };
+
+  const filteredActivities = getFilteredActivities();
+
   const renderActivity = ({ item }) => (
-    <View style={styles.card}>
+    <View style={[
+      styles.card,
+      isSharedWithMe(item) && styles.cardShared
+    ]}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.subject}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>{item.subject}</Text>
+          {isSharedWithMe(item) && (
+            <View style={styles.sharedBadge}>
+              <Ionicons name="people" size={12} color="#fff" />
+              <Text style={styles.sharedBadgeText}>Compartida conmigo</Text>
+            </View>
+          )}
+        </View>
         <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.badgeText}>{item.status}</Text>
+          <Text style={styles.badgeText}>
+            {item.status === 'pendiente' ? 'Pendiente' : 'Completada'}
+          </Text>
         </View>
       </View>
       
@@ -74,28 +196,90 @@ export default function ActivitiesScreen() {
       )}
 
       <View style={styles.cardFooter}>
+        <View style={styles.infoRow}>
+          <Ionicons name="person" size={14} color="#6b7280" />
+          <Text style={styles.infoText}>{item.createdBy?.username || 'Desconocido'}</Text>
+        </View>
         {item.institution && (
           <View style={styles.infoRow}>
-            <Ionicons name="business" size={16} color="#6b7280" />
+            <Ionicons name="business" size={14} color="#6b7280" />
             <Text style={styles.infoText}>{item.institution.name}</Text>
           </View>
         )}
-        {item.scheduledDate && (
+        {item.sharedWith && item.sharedWith.length > 0 && (
           <View style={styles.infoRow}>
-            <Ionicons name="calendar" size={16} color="#6b7280" />
-            <Text style={styles.infoText}>
-              {new Date(item.scheduledDate).toLocaleDateString()}
-            </Text>
+            <Ionicons name="people-outline" size={14} color="#6b7280" />
+            <Text style={styles.infoText}>{item.sharedWith.length} usuario(s)</Text>
           </View>
         )}
+      </View>
+
+      {/* Cambiar estado */}
+      <View style={styles.statusChangeContainer}>
+        <TouchableOpacity
+          style={[styles.statusChangeButton, item.status === 'pendiente' && styles.statusButtonActive]}
+          onPress={() => handleStatusChange(item, 'pendiente')}
+        >
+          <Text style={[styles.statusChangeText, item.status === 'pendiente' && styles.statusChangeTextActive]}>
+            Pendiente
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.statusChangeButton, item.status === 'completada' && styles.statusButtonActive]}
+          onPress={() => handleStatusChange(item, 'completada')}
+        >
+          <Text style={[styles.statusChangeText, item.status === 'completada' && styles.statusChangeTextActive]}>
+            Completada
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
+      {/* Filtros de Vista */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.viewModeScroll}>
+          <TouchableOpacity
+            style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>
+              Lista
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewModeButton, viewMode === 'pending' && styles.viewModeButtonActive]}
+            onPress={() => setViewMode('pending')}
+          >
+            <Text style={[styles.viewModeText, viewMode === 'pending' && styles.viewModeTextActive]}>
+              Pendientes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.viewModeButton, viewMode === 'completed' && styles.viewModeButtonActive]}
+            onPress={() => setViewMode('completed')}
+          >
+            <Text style={[styles.viewModeText, viewMode === 'completed' && styles.viewModeTextActive]}>
+              Completadas
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+        
+        <TouchableOpacity
+          style={styles.filterIconButton}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Ionicons name="filter" size={20} color="#3b82f6" />
+          {(filterUser !== 'all' || filterInstitution !== 'all') && (
+            <View style={styles.filterBadge} />
+          )}
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={activities}
+        data={filteredActivities}
         renderItem={renderActivity}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
@@ -103,7 +287,11 @@ export default function ActivitiesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>No hay actividades</Text>
+            <Text style={styles.emptyText}>
+              {viewMode === 'pending' && 'No hay actividades pendientes'}
+              {viewMode === 'completed' && 'No hay actividades completadas'}
+              {viewMode === 'list' && 'No hay actividades'}
+            </Text>
           </View>
         }
       />
@@ -146,26 +334,40 @@ export default function ActivitiesScreen() {
                 numberOfLines={4}
               />
 
-              <Text style={styles.label}>Estado</Text>
-              <View style={styles.statusButtons}>
-                {['pendiente', 'en_progreso', 'completada'].map((status) => (
+              <Text style={styles.label}>Institución</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.institution}
+                  onValueChange={(value) => setFormData({ ...formData, institution: value })}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Ninguna" value="" />
+                  {institutions.map((inst) => (
+                    <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Compartir con usuarios</Text>
+              <ScrollView style={styles.usersList}>
+                {contacts.map((contact) => (
                   <TouchableOpacity
-                    key={status}
-                    style={[
-                      styles.statusButton,
-                      formData.status === status && styles.statusButtonActive
-                    ]}
-                    onPress={() => setFormData({ ...formData, status })}
+                    key={contact.userId._id}
+                    style={styles.userItem}
+                    onPress={() => toggleUserSelection(contact.userId._id)}
                   >
-                    <Text style={[
-                      styles.statusButtonText,
-                      formData.status === status && styles.statusButtonTextActive
-                    ]}>
-                      {status.replace('_', ' ')}
-                    </Text>
+                    <View style={styles.checkbox}>
+                      {selectedUsers.includes(contact.userId._id) && (
+                        <Ionicons name="checkmark" size={18} color="#3b82f6" />
+                      )}
+                    </View>
+                    <Text style={styles.userName}>{contact.name}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+                {contacts.length === 0 && (
+                  <Text style={styles.noContactsText}>No hay contactos disponibles</Text>
+                )}
+              </ScrollView>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -185,6 +387,80 @@ export default function ActivitiesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Filtros */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterModalVisible}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtros</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalForm}>
+              <Text style={styles.label}>Filtrar por usuario</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filterUser}
+                  onValueChange={(value) => setFilterUser(value)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="👥 Todos los usuarios" value="all" />
+                  <Picker.Item label="👤 Mis actividades" value="mine" />
+                  {contacts.map((contact) => (
+                    <Picker.Item
+                      key={contact.userId._id}
+                      label={`🤝 ${contact.name}`}
+                      value={contact.userId._id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Filtrar por institución</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filterInstitution}
+                  onValueChange={(value) => setFilterInstitution(value)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="🏢 Todas las instituciones" value="all" />
+                  {institutions.map((inst) => (
+                    <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSubmit, { marginTop: 20 }]}
+                onPress={() => {
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.buttonSubmitText}>Aplicar Filtros</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.buttonCancel, { marginTop: 10 }]}
+                onPress={() => {
+                  setFilterUser('all');
+                  setFilterInstitution('all');
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.buttonCancelText}>Limpiar Filtros</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -193,6 +469,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  viewModeScroll: {
+    flex: 1,
+  },
+  viewModeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  viewModeButtonActive: {
+    backgroundColor: '#3b82f6',
+  },
+  viewModeText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  viewModeTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  filterIconButton: {
+    padding: 8,
+    marginLeft: 8,
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
   },
   list: {
     padding: 15,
@@ -208,6 +529,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardShared: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
+    backgroundColor: '#eff6ff',
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -218,8 +544,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
-    flex: 1,
-    marginRight: 10,
+    marginBottom: 4,
+  },
+  sharedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  sharedBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   badge: {
     paddingHorizontal: 8,
@@ -240,6 +581,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     paddingTop: 8,
+    marginBottom: 12,
   },
   infoRow: {
     flexDirection: 'row',
@@ -250,6 +592,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginLeft: 6,
+  },
+  statusChangeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  statusChangeButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  statusChangeText: {
+    fontSize: 13,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  statusChangeTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -322,31 +687,53 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  statusButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  statusButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
+  pickerContainer: {
+    backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#d1d5db',
+    borderRadius: 8,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  usersList: {
+    maxHeight: 200,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 16,
+  },
+  userItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  statusButtonActive: {
-    backgroundColor: '#3b82f6',
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
     borderColor: '#3b82f6',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statusButtonText: {
-    fontSize: 12,
-    color: '#6b7280',
-    textTransform: 'capitalize',
+  userName: {
+    fontSize: 15,
+    color: '#1f2937',
   },
-  statusButtonTextActive: {
-    color: '#fff',
-    fontWeight: '600',
+  noContactsText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   modalActions: {
     flexDirection: 'row',
