@@ -17,7 +17,7 @@ const noteSchema = new mongoose.Schema({
   },
   sharedWith: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Contact'
+    ref: 'User'
   }],
   createdAt: {
     type: Date,

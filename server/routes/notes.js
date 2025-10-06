@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const notes = await Note.find({ createdBy: req.user._id })
-      .populate('sharedWith', 'name email')
+      .populate('sharedWith', 'username email')
       .sort({ createdAt: -1 });
     
     res.json(notes);
@@ -30,7 +30,7 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     await note.save();
-    await note.populate('sharedWith', 'name email');
+    await note.populate('sharedWith', 'username email');
 
     res.status(201).json(note);
   } catch (error) {
@@ -55,7 +55,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     note.updatedAt = Date.now();
 
     await note.save();
-    await note.populate('sharedWith', 'name email');
+    await note.populate('sharedWith', 'username email');
 
     res.json(note);
   } catch (error) {

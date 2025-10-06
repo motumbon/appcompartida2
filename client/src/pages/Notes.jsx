@@ -32,8 +32,9 @@ const Notes = () => {
 
   const loadContacts = async () => {
     try {
-      const response = await contactsAPI.getContacts();
-      setContacts(response.data);
+      const response = await contactsAPI.getAll();
+      // Solo mostrar contactos que son usuarios registrados
+      setContacts(response.data.filter(c => c.isRegisteredUser));
     } catch (error) {
       console.error('Error al cargar contactos');
     }
@@ -78,7 +79,7 @@ const Notes = () => {
     setFormData({
       subject: note.subject,
       comment: note.comment,
-      sharedWith: note.sharedWith.map(c => c._id)
+      sharedWith: note.sharedWith.map(u => u._id) // usuarios, no contactos
     });
     setShowModal(true);
   };
@@ -93,12 +94,12 @@ const Notes = () => {
     });
   };
 
-  const handleContactToggle = (contactId) => {
+  const handleContactToggle = (userId) => {
     setFormData(prev => ({
       ...prev,
-      sharedWith: prev.sharedWith.includes(contactId)
-        ? prev.sharedWith.filter(id => id !== contactId)
-        : [...prev.sharedWith, contactId]
+      sharedWith: prev.sharedWith.includes(userId)
+        ? prev.sharedWith.filter(id => id !== userId)
+        : [...prev.sharedWith, userId]
     }));
   };
 
@@ -175,12 +176,12 @@ const Notes = () => {
                     <span>Compartido con:</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {note.sharedWith.map((contact) => (
+                    {note.sharedWith.map((user) => (
                       <span
-                        key={contact._id}
+                        key={user._id}
                         className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
                       >
-                        {contact.name}
+                        {user.username}
                       </span>
                     ))}
                   </div>
@@ -252,7 +253,7 @@ const Notes = () => {
                   Compartir con Contactos
                 </label>
                 {contacts.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No hay contactos disponibles</p>
+                  <p className="text-sm text-gray-500 italic">No hay usuarios disponibles para compartir</p>
                 ) : (
                   <div className="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto">
                     <div className="space-y-2">
@@ -263,8 +264,8 @@ const Notes = () => {
                         >
                           <input
                             type="checkbox"
-                            checked={formData.sharedWith.includes(contact._id)}
-                            onChange={() => handleContactToggle(contact._id)}
+                            checked={formData.sharedWith.includes(contact.userId)}
+                            onChange={() => handleContactToggle(contact.userId)}
                             className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                           />
                           <div>
