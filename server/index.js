@@ -72,6 +72,15 @@ const createAdminUser = async () => {
   }
 };
 
+// Health check endpoint (debe estar ANTES de las rutas API)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'API funcionando correctamente',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
@@ -89,14 +98,33 @@ if (process.env.NODE_ENV === 'production') {
   const clientBuildPath = path.join(__dirname, '../client/dist');
   app.use(express.static(clientBuildPath));
   
-  // Todas las rutas no-API deben servir el index.html
+  // Todas las rutas NO-API deben servir el index.html
   app.get('*', (req, res) => {
+    // Si es una ruta API que no existe, devolver 404
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ message: 'API endpoint no encontrado' });
+    }
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 } else {
   // Ruta de prueba en desarrollo
   app.get('/', (req, res) => {
-    res.json({ message: 'API de App Trabajo en Terreno 2.0' });
+    res.json({ 
+      message: 'API de App Trabajo en Terreno 2.0',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth',
+        activities: '/api/activities',
+        tasks: '/api/tasks',
+        complaints: '/api/complaints',
+        contracts: '/api/contracts',
+        stock: '/api/stock',
+        notes: '/api/notes',
+        contacts: '/api/contacts',
+        users: '/api/users',
+        institutions: '/api/institutions'
+      }
+    });
   });
 }
 

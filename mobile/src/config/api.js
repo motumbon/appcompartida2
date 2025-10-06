@@ -2,21 +2,43 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
-// Configuración de la API URL con fallback
+// Configuración de la API URL - Railway siempre usa HTTPS
+const BASE_API_URL = 'https://appcompartida2-production.up.railway.app';
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 
                 Constants.manifest?.extra?.apiUrl || 
                 Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||
-                'https://appcompartida2-production.up.railway.app/api';
+                `${BASE_API_URL}/api`;
 
-console.log('API URL configurada:', API_URL);
+console.log('🌐 API URL configurada:', API_URL);
+console.log('🔧 Constants.expoConfig:', Constants.expoConfig);
 
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000, // 30 segundos de timeout
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   }
 });
+
+// Verificar conexión a la API
+export const checkAPIConnection = async () => {
+  try {
+    console.log('🔍 Verificando conexión a:', `${API_URL}/health`);
+    const response = await axios.get(`${API_URL}/health`, { timeout: 10000 });
+    console.log('✅ Conexión exitosa:', response.data);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('❌ Error de conexión:', error.message);
+    if (error.code === 'ECONNABORTED') {
+      return { success: false, error: 'Timeout: El servidor tardó demasiado en responder' };
+    }
+    if (!error.response) {
+      return { success: false, error: 'No se pudo conectar al servidor. Verifica tu internet.' };
+    }
+    return { success: false, error: error.message };
+  }
+};
 
 // Interceptor para agregar el token
 api.interceptors.request.use(
