@@ -14,9 +14,14 @@ export default function ContractsScreen() {
   const loadContracts = async () => {
     try {
       const response = await contractsAPI.getAll();
-      setContracts(response.data);
+      console.log('Contracts response:', response.data);
+      // El backend devuelve { items: [...], uploadedBy, uploadedAt, fileName }
+      const contractsData = response.data;
+      setContracts(contractsData.items || []);
     } catch (error) {
+      console.error('Error al cargar contratos:', error);
       Alert.alert('Error', 'No se pudieron cargar los contratos');
+      setContracts([]);
     }
   };
 
@@ -36,45 +41,59 @@ export default function ContractsScreen() {
     return colors[status] || '#6b7280';
   };
 
-  const renderContract = ({ item }) => (
+  const renderContract = ({ item, index }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.contractNumber}>Contrato #{item.contractNumber}</Text>
-          <Text style={styles.clientName}>{item.clientName}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-
-      <View style={styles.detailsContainer}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Inicio:</Text>
-          <Text style={styles.detailValue}>
-            {new Date(item.startDate).toLocaleDateString()}
+          <Text style={styles.contractNumber}>
+            {item.numPedido || `Contrato #${index + 1}`}
+          </Text>
+          <Text style={styles.clientName}>
+            {item.nomCliente || item.cliente || 'Sin nombre'}
           </Text>
         </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Fin:</Text>
-          <Text style={styles.detailValue}>
-            {new Date(item.endDate).toLocaleDateString()}
-          </Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Monto:</Text>
-          <Text style={styles.detailValue}>${item.amount?.toLocaleString() || 0}</Text>
-        </View>
-        {item.institution && (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Institución:</Text>
-            <Text style={styles.detailValue}>{item.institution.name}</Text>
+        {item.tipoCtto && (
+          <View style={styles.typeBadge}>
+            <Text style={styles.typeText}>{item.tipoCtto}</Text>
           </View>
         )}
       </View>
 
-      {item.description && (
-        <Text style={styles.description}>{item.description}</Text>
+      <View style={styles.detailsContainer}>
+        {item.kamRepr && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>KAM/Repr:</Text>
+            <Text style={styles.detailValue}>{item.kamRepr}</Text>
+          </View>
+        )}
+        {item.material && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Material:</Text>
+            <Text style={styles.detailValue}>{item.material}</Text>
+          </View>
+        )}
+        {item.inicioValidez && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Inicio:</Text>
+            <Text style={styles.detailValue}>{item.inicioValidez}</Text>
+          </View>
+        )}
+        {item.finValidez && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Fin:</Text>
+            <Text style={styles.detailValue}>{item.finValidez}</Text>
+          </View>
+        )}
+        {item.linea && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Línea:</Text>
+            <Text style={styles.detailValue}>{item.linea}</Text>
+          </View>
+        )}
+      </View>
+
+      {item.denominacion && (
+        <Text style={styles.description} numberOfLines={2}>{item.denominacion}</Text>
       )}
     </View>
   );
@@ -134,12 +153,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
   },
-  statusBadge: {
+  typeBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    backgroundColor: '#3b82f6',
   },
-  statusText: {
+  typeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',

@@ -29,9 +29,13 @@ export default function StockScreen() {
   const loadStock = async () => {
     try {
       const response = await stockAPI.getAll();
-      setItems(response.data.items || []);
+      console.log('Stock response:', response.data);
+      // El backend devuelve { items: [...], uploadedBy, uploadedAt, fileName }
+      const stockData = response.data;
+      setItems(stockData.items || []);
     } catch (error) {
       console.error('Error al cargar stock:', error);
+      setItems([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
