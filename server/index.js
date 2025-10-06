@@ -136,9 +136,14 @@ app.use((err, req, res, next) => {
 
 // Iniciar servidor
 connectDB().then(() => {
-  app.listen(PORT, () => {
+  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  app.listen(PORT, HOST, () => {
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`📍 http://localhost:${PORT}`);
+    console.log(`📍 HOST: ${HOST}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`✅ Escuchando en todas las interfaces de red (0.0.0.0:${PORT})`);
+    }
   });
 });
 
