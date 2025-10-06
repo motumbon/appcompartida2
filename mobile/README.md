@@ -1,9 +1,15 @@
-# App Trabajo en Terreno - Aplicación Móvil Android
+# App Trabajo en Terreno - Versión Móvil
 
-Aplicación móvil desarrollada con React Native y Expo para gestión de actividades, tareas, reclamos y contratos.
+Aplicación móvil Android desarrollada con **React Native + Expo** que se conecta a la misma API que la versión web, permitiendo sincronización total de datos en tiempo real.
 
-## Prerequisitos
+## Características
 
+- **Sincronización en tiempo real** con la versión web
+- **Todas las funcionalidades** de la plataforma web
+- **Mismo sistema de permisos** por usuario
+- **Autenticación segura** con JWT
+- **Interfaz optimizada** para móvil
+- **Funciona offline** (próximamente)
 - Node.js 18 o superior
 - npm o yarn
 - Cuenta de Expo (para compilar el APK)

@@ -64,12 +64,29 @@ export const complaintsAPI = {
 };
 
 export const contractsAPI = {
-  getAll: () => api.get('/contracts')
+  getContracts: () => api.get('/contracts')
 };
 
 export const contactsAPI = {
   getAll: () => api.get('/contacts'),
-  create: (data) => api.post('/contacts', data)
+  create: (data) => api.post('/contacts', data),
+  update: (id, data) => api.put(`/contacts/${id}`, data),
+  delete: (id) => api.delete(`/contacts/${id}`)
+};
+
+export const stockAPI = {
+  uploadFile: (formData) => api.post('/stock/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getAll: () => api.get('/stock'),
+  search: (query) => api.get(`/stock/search?query=${encodeURIComponent(query)}`)
+};
+
+export const notesAPI = {
+  getNotes: () => api.get('/notes'),
+  createNote: (data) => api.post('/notes', data),
+  updateNote: (id, data) => api.put(`/notes/${id}`, data),
+  deleteNote: (id) => api.delete(`/notes/${id}`)
 };
 
 export default api;
