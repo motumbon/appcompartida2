@@ -208,10 +208,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const activity = await Activity.findOneAndDelete({ _id: id, createdBy: req.user._id });
+    // Eliminar si es creador O está compartida con el usuario
+    const activity = await Activity.findOneAndDelete({ 
+      _id: id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
 
     if (!activity) {
-      return res.status(404).json({ message: 'Actividad no encontrada' });
+      return res.status(404).json({ message: 'Actividad no encontrada o sin permisos' });
     }
 
     // Eliminar archivos adjuntos

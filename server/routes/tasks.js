@@ -121,10 +121,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const task = await Task.findOneAndDelete({ _id: id, createdBy: req.user._id });
+    // Eliminar si es creador O está compartida con el usuario
+    const task = await Task.findOneAndDelete({ 
+      _id: id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
 
     if (!task) {
-      return res.status(404).json({ message: 'Tarea no encontrada' });
+      return res.status(404).json({ message: 'Tarea no encontrada o sin permisos' });
     }
 
     res.json({ message: 'Tarea eliminada exitosamente' });
