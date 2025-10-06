@@ -156,36 +156,34 @@ const Notes = () => {
               <div
                 key={note._id}
                 className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-5 border-l-4 ${
-                  isShared ? 'border-green-500' : 'border-blue-500'
+                  isShared ? 'border-purple-500' : 'border-blue-500'
                 }`}
               >
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="text-lg font-semibold text-gray-800 flex-1 pr-2">
                     {note.subject}
                   </h3>
-                  {!isShared && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleEdit(note)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(note._id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleEdit(note)}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Editar"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(note._id)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 {isShared && note.createdBy && (
                   <div className="mb-2">
-                    <div className="flex items-center gap-1 text-xs text-gray-600 bg-green-50 px-2 py-1 rounded">
+                    <div className="flex items-center gap-1 text-xs text-gray-600 bg-purple-50 px-2 py-1 rounded">
                       <User size={12} />
                       <span>Creado por: <span className="font-medium">{note.createdBy.username}</span></span>
                     </div>

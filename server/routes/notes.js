@@ -50,10 +50,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { subject, comment, sharedWith } = req.body;
 
-    const note = await Note.findOne({ _id: req.params.id, createdBy: req.user._id });
+    // Buscar nota donde el usuario es creador O está en sharedWith
+    const note = await Note.findOne({
+      _id: req.params.id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
+    });
     
     if (!note) {
-      return res.status(404).json({ message: 'Nota no encontrada' });
+      return res.status(404).json({ message: 'Nota no encontrada o sin permisos' });
     }
 
     note.subject = subject;
@@ -62,6 +69,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     note.updatedAt = Date.now();
 
     await note.save();
+    await note.populate('createdBy', 'username email');
     await note.populate('sharedWith', 'username email');
 
     res.json(note);
@@ -73,13 +81,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Eliminar nota
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
+    // Eliminar nota donde el usuario es creador O está en sharedWith
     const note = await Note.findOneAndDelete({ 
-      _id: req.params.id, 
-      createdBy: req.user._id 
+      _id: req.params.id,
+      $or: [
+        { createdBy: req.user._id },
+        { sharedWith: req.user._id }
+      ]
     });
 
     if (!note) {
-      return res.status(404).json({ message: 'Nota no encontrada' });
+      return res.status(404).json({ message: 'Nota no encontrada o sin permisos' });
     }
 
     res.json({ message: 'Nota eliminada exitosamente' });
