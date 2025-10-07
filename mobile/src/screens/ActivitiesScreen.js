@@ -309,7 +309,10 @@ export default function ActivitiesScreen() {
           )}
         </View>
         <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.badgeText}>
+          <Text style={[
+            styles.badgeText,
+            item.status === 'pendiente' && { color: '#78350f' }
+          ]}>
             {item.status === 'pendiente' ? 'Pendiente' : 'Completada'}
           </Text>
         </View>

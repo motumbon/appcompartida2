@@ -6,7 +6,10 @@ import {
   StyleSheet,
   TextInput,
   RefreshControl,
-  ActivityIndicator
+  ActivityIndicator,
+  TouchableOpacity,
+  Modal,
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { stockAPI } from '../config/api';
@@ -17,6 +20,13 @@ export default function StockScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filters, setFilters] = useState({
+    linea: '',
+    codigo: '',
+    material: '',
+    status: ''
+  });
 
   useEffect(() => {
     loadStock();
@@ -24,7 +34,7 @@ export default function StockScreen() {
 
   useEffect(() => {
     filterItems();
-  }, [searchQuery, items]);
+  }, [searchQuery, items, filters]);
 
   const loadStock = async () => {
     try {
@@ -43,18 +53,57 @@ export default function StockScreen() {
   };
 
   const filterItems = () => {
-    if (!searchQuery.trim()) {
-      setFilteredItems(items);
-      return;
+    let filtered = items;
+
+    // Filtros del modal
+    if (filters.linea) {
+      filtered = filtered.filter(item => 
+        item.linea?.toLowerCase().includes(filters.linea.toLowerCase())
+      );
+    }
+    if (filters.codigo) {
+      filtered = filtered.filter(item => 
+        item.codigo?.toLowerCase().includes(filters.codigo.toLowerCase())
+      );
+    }
+    if (filters.material) {
+      filtered = filtered.filter(item => 
+        item.material?.toLowerCase().includes(filters.material.toLowerCase())
+      );
+    }
+    if (filters.status) {
+      filtered = filtered.filter(item => 
+        item.status?.toLowerCase().includes(filters.status.toLowerCase())
+      );
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = items.filter(item =>
-      item.referencia?.toLowerCase().includes(query) ||
-      item.descripcion?.toLowerCase().includes(query) ||
-      item.marca?.toLowerCase().includes(query)
-    );
+    // Búsqueda general
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.referencia?.toLowerCase().includes(query) ||
+        item.descripcion?.toLowerCase().includes(query) ||
+        item.codigo?.toLowerCase().includes(query) ||
+        item.material?.toLowerCase().includes(query) ||
+        item.linea?.toLowerCase().includes(query) ||
+        item.observacion?.toLowerCase().includes(query)
+      );
+    }
+
     setFilteredItems(filtered);
+  };
+
+  const hasActiveFilters = () => {
+    return filters.linea || filters.codigo || filters.material || filters.status;
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      linea: '',
+      codigo: '',
+      material: '',
+      status: ''
+    });
   };
 
   const getStatusColor = (cantidad) => {
@@ -71,46 +120,53 @@ export default function StockScreen() {
     return 'Disponible';
   };
 
+  const getStatusColorFromText = (status) => {
+    if (!status) return '#6b7280';
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('sin stock')) return '#ef4444';
+    if (statusLower.includes('discontinua')) return '#10b981';
+    if (statusLower.includes('disponible') || statusLower.includes('contratos')) return '#3b82f6';
+    if (statusLower.includes('mensual')) return '#8b5cf6';
+    return '#6b7280';
+  };
+
   const renderItem = ({ item }) => {
-    const cantidad = parseInt(item.cantidad) || 0;
-    const statusColor = getStatusColor(cantidad);
-    const statusText = getStatusText(cantidad);
+    const statusColor = getStatusColorFromText(item.status);
 
     return (
       <View style={styles.itemCard}>
         <View style={styles.itemHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusText}</Text>
+          <View style={{ flex: 1 }}>
+            {item.linea && (
+              <Text style={styles.itemLinea}>{item.linea}</Text>
+            )}
+            <Text style={styles.itemReference}>{item.codigo || item.referencia || 'Sin código'}</Text>
           </View>
-          <Text style={styles.stockQuantity}>{cantidad} unid.</Text>
+          {item.status && (
+            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+              <Text style={styles.statusTextWhite}>{item.status}</Text>
+            </View>
+          )}
         </View>
 
-        <Text style={styles.itemReference}>{item.referencia || 'Sin referencia'}</Text>
-        {item.descripcion && (
-          <Text style={styles.itemDescription} numberOfLines={2}>
-            {item.descripcion}
-          </Text>
+        {item.material && (
+          <Text style={styles.itemMaterial}>{item.material}</Text>
         )}
 
-        <View style={styles.itemDetails}>
-          {item.marca && (
-            <View style={styles.detailRow}>
-              <Ionicons name="pricetag-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>{item.marca}</Text>
-            </View>
-          )}
-          {item.precioVenta && (
-            <View style={styles.detailRow}>
-              <Ionicons name="cash-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>${item.precioVenta}</Text>
+        <View style={styles.detailsGrid}>
+          {item.descripcion && (
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Descripción:</Text>
+              <Text style={styles.detailValue} numberOfLines={2}>{item.descripcion}</Text>
             </View>
           )}
         </View>
 
-        {item.observaciones && (
+        {item.observacion && (
           <View style={styles.observations}>
+            <Text style={styles.detailLabel}>Observación:</Text>
             <Text style={styles.observationsText} numberOfLines={3}>
-              {item.observaciones}
+              {item.observacion}
             </Text>
           </View>
         )}
@@ -129,6 +185,23 @@ export default function StockScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Barra de filtros */}
+      <View style={styles.filterBar}>
+        <TouchableOpacity 
+          style={styles.filterButton}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Ionicons name="funnel-outline" size={20} color="#fff" />
+          <Text style={styles.filterButtonText}>Filtros</Text>
+          {hasActiveFilters() && <View style={styles.filterDot} />}
+        </TouchableOpacity>
+        {hasActiveFilters() && (
+          <TouchableOpacity onPress={clearFilters} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>Limpiar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
@@ -194,6 +267,77 @@ export default function StockScreen() {
           </View>
         }
       />
+
+      {/* Modal de Filtros */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterModalVisible}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtrar Stock</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalForm}>
+              <Text style={styles.label}>Línea</Text>
+              <TextInput
+                style={styles.input}
+                value={filters.linea}
+                onChangeText={(text) => setFilters({...filters, linea: text})}
+                placeholder="Buscar por línea..."
+              />
+
+              <Text style={styles.label}>Código</Text>
+              <TextInput
+                style={styles.input}
+                value={filters.codigo}
+                onChangeText={(text) => setFilters({...filters, codigo: text})}
+                placeholder="Buscar por código..."
+              />
+
+              <Text style={styles.label}>Material</Text>
+              <TextInput
+                style={styles.input}
+                value={filters.material}
+                onChangeText={(text) => setFilters({...filters, material: text})}
+                placeholder="Buscar por material..."
+              />
+
+              <Text style={styles.label}>Status</Text>
+              <TextInput
+                style={styles.input}
+                value={filters.status}
+                onChangeText={(text) => setFilters({...filters, status: text})}
+                placeholder="Buscar por status..."
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSecondary]}
+                  onPress={() => {
+                    clearFilters();
+                    setFilterModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.buttonSecondaryText}>Limpiar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonPrimary]}
+                  onPress={() => setFilterModalVisible(false)}
+                >
+                  <Text style={styles.buttonPrimaryText}>Aplicar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -349,5 +493,150 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     textAlign: 'center'
-  }
+  },
+  itemLinea: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3b82f6',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  itemMaterial: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  detailsGrid: {
+    marginTop: 8,
+  },
+  detailItem: {
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#1f2937',
+  },
+  statusTextWhite: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    gap: 8,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  filterButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fbbf24',
+  },
+  clearButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  clearButtonText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    height: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  modalForm: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  button: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonSecondary: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  buttonSecondaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  buttonPrimary: {
+    backgroundColor: '#3b82f6',
+  },
+  buttonPrimaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });
