@@ -266,33 +266,30 @@ export default function HomeScreen() {
 
   // Navegar a crear actividad
   const createNewActivity = () => {
-    navigation.navigate('Activities', { 
-      screen: 'ActivitiesList',
-      params: { openModal: true, date: selectedDate } 
+    navigation.navigate('Actividades', { 
+      openModal: true, 
+      date: selectedDate 
     });
   };
 
   // Navegar a editar actividad
   const editActivity = (activity) => {
-    navigation.navigate('Activities', {
-      screen: 'ActivitiesList',
-      params: { editActivity: activity }
+    navigation.navigate('Actividades', {
+      editActivity: activity
     });
   };
 
   // Navegar a crear tarea
   const createNewTask = () => {
-    navigation.navigate('Tasks', {
-      screen: 'TasksList',
-      params: { openModal: true }
+    navigation.navigate('Tareas', {
+      openModal: true
     });
   };
 
   // Navegar a editar tarea
   const editTask = (task) => {
-    navigation.navigate('Tasks', {
-      screen: 'TasksList',
-      params: { editTask: task }
+    navigation.navigate('Tareas', {
+      editTask: task
     });
   };
 
