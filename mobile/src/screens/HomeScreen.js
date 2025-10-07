@@ -449,16 +449,6 @@ export default function HomeScreen() {
           ))}
         </View>
       )}
-
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>Bienvenido a App Trabajo en Terreno</Text>
-        <Text style={styles.infoText}>
-          Gestiona tus actividades, tareas, reclamos y contratos desde tu dispositivo móvil.
-        </Text>
-        <Text style={styles.infoText}>
-          Utiliza el menú inferior para navegar entre las diferentes secciones.
-        </Text>
-      </View>
     </ScrollView>
   );
 }
@@ -470,14 +460,14 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#3b82f6',
-    padding: 20,
-    paddingTop: 40,
+    padding: 12,
+    paddingTop: 25,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   greeting: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
     flex: 1,
@@ -500,49 +490,26 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 10,
+    padding: 8,
     justifyContent: 'space-between',
   },
   statCard: {
     width: '48%',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 15,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginVertical: 10,
+    marginVertical: 6,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: '#fff',
-    margin: 10,
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 10,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-    marginBottom: 10,
   },
   notificationsSection: {
     margin: 10,
