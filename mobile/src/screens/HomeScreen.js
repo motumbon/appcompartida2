@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '../contexts/AuthContext';
 import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI } from '../config/api';
 
@@ -8,12 +9,32 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState({ activities: 0, tasks: 0, complaints: 0, contracts: 0 });
   const [notifications, setNotifications] = useState([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    loadDismissedNotifications();
     loadStats();
     loadNotifications();
   }, []);
+
+  const loadDismissedNotifications = async () => {
+    try {
+      const dismissed = await SecureStore.getItemAsync('dismissedNotifications');
+      if (dismissed) {
+        setDismissedNotifications(JSON.parse(dismissed));
+      }
+    } catch (error) {
+      console.error('Error loading dismissed notifications:', error);
+    }
+  };
+
+  const dismissNotification = async (notifId) => {
+    const newDismissed = [...dismissedNotifications, notifId];
+    setDismissedNotifications(newDismissed);
+    await SecureStore.setItemAsync('dismissedNotifications', JSON.stringify(newDismissed));
+    setNotifications(notifications.filter(n => n.id !== notifId));
+  };
 
   const loadStats = async () => {
     try {
@@ -133,9 +154,10 @@ export default function HomeScreen() {
         console.log('No hay stock disponible');
       }
 
-      // Ordenar por fecha más reciente
+      // Ordenar por fecha más reciente y filtrar desestimadas
       notifs.sort((a, b) => new Date(b.time) - new Date(a.time));
-      setNotifications(notifs.slice(0, 5)); // Máximo 5 notificaciones
+      const filtered = notifs.filter(n => !dismissedNotifications.includes(n.id));
+      setNotifications(filtered.slice(0, 5)); // Máximo 5 notificaciones
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
@@ -222,6 +244,12 @@ export default function HomeScreen() {
                 <Text style={styles.notifMessage} numberOfLines={2}>{notif.message}</Text>
                 <Text style={styles.notifTime}>{getTimeAgo(notif.time)}</Text>
               </View>
+              <TouchableOpacity 
+                onPress={() => dismissNotification(notif.id)}
+                style={styles.dismissButton}
+              >
+                <Ionicons name="close" size={20} color="#9ca3af" />
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -370,5 +398,9 @@ const styles = StyleSheet.create({
   notifTime: {
     fontSize: 11,
     color: '#9ca3af',
+  },
+  dismissButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
