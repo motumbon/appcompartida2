@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import Activity from '../models/Activity.js';
 import { authenticateToken } from '../middleware/auth.js';
-import upload from '../middleware/upload.js';
+import { uploadActivityFiles } from '../middleware/upload.js';
 import pushNotificationService from '../services/pushNotificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
