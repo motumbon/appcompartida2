@@ -848,6 +848,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f9fafb',
   },
+  statusButtonActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
   statusChangeText: {
     fontSize: 13,
     color: '#1f2937',

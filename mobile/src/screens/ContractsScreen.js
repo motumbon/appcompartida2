@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, TextInput, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { contractsAPI } from '../config/api';
 
 export default function ContractsScreen() {
@@ -9,9 +10,10 @@ export default function ContractsScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({
     kam: '',
+    status: '',
     cliente: '',
-    material: '',
-    linea: ''
+    linea: '',
+    material: ''
   });
 
   useEffect(() => {
@@ -55,26 +57,73 @@ export default function ContractsScreen() {
     }
   };
 
+  // Obtener opciones únicas para los pickers
+  const getUniqueKams = () => {
+    const kams = contracts.map(c => c.kamRepr).filter(Boolean);
+    return [...new Set(kams)].sort();
+  };
+
+  const getFilteredClientes = () => {
+    let filtered = contracts;
+    if (filters.kam) {
+      filtered = filtered.filter(c => c.kamRepr === filters.kam);
+    }
+    const clientes = filtered.map(c => c.nomCliente).filter(Boolean);
+    return [...new Set(clientes)].sort();
+  };
+
+  const getFilteredLineas = () => {
+    let filtered = contracts;
+    if (filters.kam) filtered = filtered.filter(c => c.kamRepr === filters.kam);
+    if (filters.cliente) filtered = filtered.filter(c => c.nomCliente === filters.cliente);
+    const lineas = filtered.map(c => c.linea).filter(Boolean);
+    return [...new Set(lineas)].sort();
+  };
+
+  const getFilteredMateriales = () => {
+    let filtered = contracts;
+    if (filters.kam) filtered = filtered.filter(c => c.kamRepr === filters.kam);
+    if (filters.cliente) filtered = filtered.filter(c => c.nomCliente === filters.cliente);
+    if (filters.linea) filtered = filtered.filter(c => c.linea === filters.linea);
+    const materiales = filtered.map(c => c.material).filter(Boolean);
+    return [...new Set(materiales)].sort();
+  };
+
   const getFilteredContracts = () => {
     return contracts.filter(contract => {
-      const matchKam = !filters.kam || (contract.kamRepr && contract.kamRepr.toLowerCase().includes(filters.kam.toLowerCase()));
-      const matchCliente = !filters.cliente || (contract.nomCliente && contract.nomCliente.toLowerCase().includes(filters.cliente.toLowerCase()));
-      const matchMaterial = !filters.material || (contract.material && contract.material.toLowerCase().includes(filters.material.toLowerCase()));
-      const matchLinea = !filters.linea || (contract.linea && contract.linea.toLowerCase().includes(filters.linea.toLowerCase()));
-      return matchKam && matchCliente && matchMaterial && matchLinea;
+      const matchKam = !filters.kam || contract.kamRepr === filters.kam;
+      const matchCliente = !filters.cliente || contract.nomCliente === filters.cliente;
+      const matchMaterial = !filters.material || contract.material === filters.material;
+      const matchLinea = !filters.linea || contract.linea === filters.linea;
+      
+      // Filtro de status
+      let matchStatus = true;
+      if (filters.status) {
+        const expirationInfo = getExpirationStatus(contract.finValidez);
+        if (filters.status === 'active') {
+          matchStatus = expirationInfo.status === 'active';
+        } else if (filters.status === 'expiring') {
+          matchStatus = expirationInfo.status === 'expiring';
+        } else if (filters.status === 'expired') {
+          matchStatus = expirationInfo.status === 'expired';
+        }
+      }
+      
+      return matchKam && matchCliente && matchMaterial && matchLinea && matchStatus;
     });
   };
 
   const hasActiveFilters = () => {
-    return filters.kam || filters.cliente || filters.material || filters.linea;
+    return filters.kam || filters.status || filters.cliente || filters.material || filters.linea;
   };
 
   const clearFilters = () => {
     setFilters({
       kam: '',
+      status: '',
       cliente: '',
-      material: '',
-      linea: ''
+      linea: '',
+      material: ''
     });
   };
 
@@ -179,37 +228,98 @@ export default function ContractsScreen() {
             </View>
 
             <ScrollView style={styles.modalForm}>
+              {/* 1. KAM/Representante */}
               <Text style={styles.label}>KAM/Representante</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.kam}
-                onChangeText={(text) => setFilters({...filters, kam: text})}
-                placeholder="Buscar por KAM..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.kam}
+                  onValueChange={(value) => setFilters({
+                    kam: value,
+                    status: filters.status,
+                    cliente: '',
+                    linea: '',
+                    material: ''
+                  })}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getUniqueKams().map((kam) => (
+                    <Picker.Item key={kam} label={kam} value={kam} />
+                  ))}
+                </Picker>
+              </View>
 
+              {/* 2. Status */}
+              <Text style={styles.label}>Estado</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.status}
+                  onValueChange={(value) => setFilters({...filters, status: value})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  <Picker.Item label="Vigente (>60 días)" value="active" />
+                  <Picker.Item label="Próximo a vencer (<60 días)" value="expiring" />
+                  <Picker.Item label="Vencido" value="expired" />
+                </Picker>
+              </View>
+
+              {/* 3. Nombre Cliente */}
               <Text style={styles.label}>Nombre Cliente</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.cliente}
-                onChangeText={(text) => setFilters({...filters, cliente: text})}
-                placeholder="Buscar por cliente..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.cliente}
+                  onValueChange={(value) => setFilters({
+                    ...filters,
+                    cliente: value,
+                    linea: '',
+                    material: ''
+                  })}
+                  style={styles.picker}
+                  enabled={!filters.kam || getFilteredClientes().length > 0}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getFilteredClientes().map((cliente) => (
+                    <Picker.Item key={cliente} label={cliente} value={cliente} />
+                  ))}
+                </Picker>
+              </View>
 
-              <Text style={styles.label}>Material</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.material}
-                onChangeText={(text) => setFilters({...filters, material: text})}
-                placeholder="Buscar por material..."
-              />
-
+              {/* 4. Línea */}
               <Text style={styles.label}>Línea</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.linea}
-                onChangeText={(text) => setFilters({...filters, linea: text})}
-                placeholder="Buscar por línea..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.linea}
+                  onValueChange={(value) => setFilters({
+                    ...filters,
+                    linea: value,
+                    material: ''
+                  })}
+                  style={styles.picker}
+                  enabled={getFilteredLineas().length > 0}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getFilteredLineas().map((linea) => (
+                    <Picker.Item key={linea} label={linea} value={linea} />
+                  ))}
+                </Picker>
+              </View>
+
+              {/* 5. Material */}
+              <Text style={styles.label}>Material</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.material}
+                  onValueChange={(value) => setFilters({...filters, material: value})}
+                  style={styles.picker}
+                  enabled={getFilteredMateriales().length > 0}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getFilteredMateriales().map((material) => (
+                    <Picker.Item key={material} label={material} value={material} />
+                  ))}
+                </Picker>
+              </View>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity

@@ -12,6 +12,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { stockAPI } from '../config/api';
 
 export default function StockScreen() {
@@ -91,6 +92,27 @@ export default function StockScreen() {
     }
 
     setFilteredItems(filtered);
+  };
+
+  // Obtener opciones únicas para los pickers
+  const getUniqueLineas = () => {
+    const lineas = items.map(i => i.linea).filter(Boolean);
+    return [...new Set(lineas)].sort();
+  };
+
+  const getUniqueCodigos = () => {
+    const codigos = items.map(i => i.codigo).filter(Boolean);
+    return [...new Set(codigos)].sort();
+  };
+
+  const getUniqueMateriales = () => {
+    const materiales = items.map(i => i.material).filter(Boolean);
+    return [...new Set(materiales)].sort();
+  };
+
+  const getUniqueStatus = () => {
+    const statuses = items.map(i => i.status).filter(Boolean);
+    return [...new Set(statuses)].sort();
   };
 
   const hasActiveFilters = () => {
@@ -206,7 +228,7 @@ export default function StockScreen() {
         <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por referencia, descripción o marca..."
+          placeholder="Buscar material..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -218,25 +240,6 @@ export default function StockScreen() {
             onPress={() => setSearchQuery('')}
           />
         )}
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{items.length}</Text>
-          <Text style={styles.statLabel}>Total Items</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            {items.filter(i => parseInt(i.cantidad) === 0).length}
-          </Text>
-          <Text style={styles.statLabel}>Sin Stock</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            {items.filter(i => parseInt(i.cantidad) > 0 && parseInt(i.cantidad) < 5).length}
-          </Text>
-          <Text style={styles.statLabel}>Stock Bajo</Text>
-        </View>
       </View>
 
       <FlatList
@@ -286,36 +289,60 @@ export default function StockScreen() {
 
             <ScrollView style={styles.modalForm}>
               <Text style={styles.label}>Línea</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.linea}
-                onChangeText={(text) => setFilters({...filters, linea: text})}
-                placeholder="Buscar por línea..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.linea}
+                  onValueChange={(value) => setFilters({...filters, linea: value})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getUniqueLineas().map((linea) => (
+                    <Picker.Item key={linea} label={linea} value={linea} />
+                  ))}
+                </Picker>
+              </View>
 
               <Text style={styles.label}>Código</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.codigo}
-                onChangeText={(text) => setFilters({...filters, codigo: text})}
-                placeholder="Buscar por código..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.codigo}
+                  onValueChange={(value) => setFilters({...filters, codigo: value})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getUniqueCodigos().map((codigo) => (
+                    <Picker.Item key={codigo} label={codigo} value={codigo} />
+                  ))}
+                </Picker>
+              </View>
 
               <Text style={styles.label}>Material</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.material}
-                onChangeText={(text) => setFilters({...filters, material: text})}
-                placeholder="Buscar por material..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.material}
+                  onValueChange={(value) => setFilters({...filters, material: value})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getUniqueMateriales().map((material) => (
+                    <Picker.Item key={material} label={material} value={material} />
+                  ))}
+                </Picker>
+              </View>
 
               <Text style={styles.label}>Status</Text>
-              <TextInput
-                style={styles.input}
-                value={filters.status}
-                onChangeText={(text) => setFilters({...filters, status: text})}
-                placeholder="Buscar por status..."
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.status}
+                  onValueChange={(value) => setFilters({...filters, status: value})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {getUniqueStatus().map((status) => (
+                    <Picker.Item key={status} label={status} value={status} />
+                  ))}
+                </Picker>
+              </View>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -377,34 +404,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1f2937'
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 12
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280'
   },
   listContent: {
     paddingHorizontal: 16,
