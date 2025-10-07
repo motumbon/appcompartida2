@@ -20,13 +20,21 @@ export default function HomeScreen() {
   const [allTasks, setAllTasks] = useState([]);
   const [todayActivities, setTodayActivities] = useState([]);
   const [pendingTasks, setPendingTasks] = useState([]);
-  const previousDataRef = useRef({ activities: [], tasks: [], complaints: [] });
+  const previousDataRef = useRef({ activities: [], tasks: [], complaints: [], notes: [], contracts: null, stock: null });
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   useEffect(() => {
     const initializeData = async () => {
       const dismissed = await loadDismissedNotifications();
+      
+      // Cargar estado previo de SecureStore
+      await loadPreviousState();
+      
       await loadStats();
       await loadNotifications(dismissed);
+      
+      // Marcar que ya no es la primera carga
+      setIsFirstLoad(false);
       
       // Inicializar servicio de notificaciones
       await notificationService.registerForPushNotifications();
@@ -47,6 +55,8 @@ export default function HomeScreen() {
             navigation.navigate('Contratos');
           } else if (data.type === 'stock') {
             navigation.navigate('Stock');
+          } else if (data.type === 'note') {
+            navigation.navigate('Notas');
           }
         }
       );
@@ -70,6 +80,25 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error loading dismissed notifications:', error);
       return [];
+    }
+  };
+
+  const loadPreviousState = async () => {
+    try {
+      const previousState = await SecureStore.getItemAsync('previousNotificationState');
+      if (previousState) {
+        previousDataRef.current = JSON.parse(previousState);
+      }
+    } catch (error) {
+      console.error('Error loading previous state:', error);
+    }
+  };
+
+  const savePreviousState = async () => {
+    try {
+      await SecureStore.setItemAsync('previousNotificationState', JSON.stringify(previousDataRef.current));
+    } catch (error) {
+      console.error('Error saving previous state:', error);
     }
   };
 
@@ -131,13 +160,17 @@ export default function HomeScreen() {
         activity.createdBy?._id !== user?._id
       );
       
-      // Detectar nuevas actividades y enviar notificación push
-      const newActivities = sharedActivities.filter(a => 
-        !previousDataRef.current.activities.some(prev => prev._id === a._id)
-      );
-      newActivities.forEach(activity => {
-        notificationService.notifySharedActivity(activity, activity.createdBy?.username || 'Alguien');
-      });
+      // Detectar nuevas actividades y enviar notificación push (solo si no es la primera carga)
+      if (!isFirstLoad && previousDataRef.current.activities.length > 0) {
+        const newActivities = sharedActivities.filter(a => 
+          !previousDataRef.current.activities.some(prev => prev._id === a._id)
+        );
+        if (newActivities.length > 0) {
+          newActivities.forEach(activity => {
+            notificationService.notifySharedActivity(activity, activity.createdBy?.username || 'Alguien');
+          });
+        }
+      }
       previousDataRef.current.activities = sharedActivities;
       
       sharedActivities.slice(0, 3).forEach(activity => {
@@ -159,13 +192,17 @@ export default function HomeScreen() {
         task.createdBy?._id !== user?._id
       );
       
-      // Detectar nuevas tareas y enviar notificación push
-      const newTasks = sharedTasks.filter(t => 
-        !previousDataRef.current.tasks.some(prev => prev._id === t._id)
-      );
-      newTasks.forEach(task => {
-        notificationService.notifySharedTask(task, task.createdBy?.username || 'Alguien');
-      });
+      // Detectar nuevas tareas y enviar notificación push (solo si no es la primera carga)
+      if (!isFirstLoad && previousDataRef.current.tasks.length > 0) {
+        const newTasks = sharedTasks.filter(t => 
+          !previousDataRef.current.tasks.some(prev => prev._id === t._id)
+        );
+        if (newTasks.length > 0) {
+          newTasks.forEach(task => {
+            notificationService.notifySharedTask(task, task.createdBy?.username || 'Alguien');
+          });
+        }
+      }
       previousDataRef.current.tasks = sharedTasks;
       
       sharedTasks.slice(0, 3).forEach(task => {
@@ -186,6 +223,20 @@ export default function HomeScreen() {
         complaint.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
         complaint.createdBy?._id !== user?._id
       );
+      
+      // Detectar nuevos reclamos y enviar notificación push (solo si no es la primera carga)
+      if (!isFirstLoad && previousDataRef.current.complaints.length > 0) {
+        const newComplaints = sharedComplaints.filter(c => 
+          !previousDataRef.current.complaints.some(prev => prev._id === c._id)
+        );
+        if (newComplaints.length > 0) {
+          newComplaints.forEach(complaint => {
+            notificationService.notifySharedComplaint(complaint, complaint.createdBy?.username || 'Alguien');
+          });
+        }
+      }
+      previousDataRef.current.complaints = sharedComplaints;
+      
       sharedComplaints.slice(0, 2).forEach(complaint => {
         notifs.push({
           id: `complaint-${complaint._id}`,
@@ -203,9 +254,17 @@ export default function HomeScreen() {
       if (contractsRes.data.uploadedAt) {
         const uploadDate = new Date(contractsRes.data.uploadedAt);
         const daysSinceUpload = Math.floor((new Date() - uploadDate) / (1000 * 60 * 60 * 24));
+        
+        // Detectar nuevo archivo de contratos (solo si no es la primera carga)
+        if (!isFirstLoad && previousDataRef.current.contracts && 
+            previousDataRef.current.contracts !== contractsRes.data.uploadedAt) {
+          notificationService.notifyContractsUpdate(contractsRes.data.uploadedBy?.username || 'Administrador');
+        }
+        previousDataRef.current.contracts = contractsRes.data.uploadedAt;
+        
         if (daysSinceUpload <= 7) {
           notifs.push({
-            id: 'contracts-new',
+            id: `contracts-${uploadDate.getTime()}`,
             type: 'contracts',
             icon: 'document-text',
             color: '#6366f1',
@@ -222,9 +281,17 @@ export default function HomeScreen() {
         if (stockRes.data.uploadedAt) {
           const uploadDate = new Date(stockRes.data.uploadedAt);
           const daysSinceUpload = Math.floor((new Date() - uploadDate) / (1000 * 60 * 60 * 24));
+          
+          // Detectar nuevo archivo de stock (solo si no es la primera carga)
+          if (!isFirstLoad && previousDataRef.current.stock && 
+              previousDataRef.current.stock !== stockRes.data.uploadedAt) {
+            notificationService.notifyStockUpdate(stockRes.data.uploadedBy?.username || 'Administrador');
+          }
+          previousDataRef.current.stock = stockRes.data.uploadedAt;
+          
           if (daysSinceUpload <= 7) {
             notifs.push({
-              id: 'stock-new',
+              id: `stock-${uploadDate.getTime()}`,
               type: 'stock',
               icon: 'cube',
               color: '#3b82f6',
@@ -237,6 +304,50 @@ export default function HomeScreen() {
       } catch (error) {
         console.log('No hay stock disponible');
       }
+
+      // Notas compartidas conmigo (NUEVO)
+      try {
+        const notesAPI = require('../config/api').notesAPI;
+        const notesRes = await notesAPI.getAll();
+        const sharedNotes = notesRes.data.filter(note => 
+          note.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
+          note.createdBy?._id !== user?._id
+        );
+        
+        // Detectar nuevas notas y enviar notificación push (solo si no es la primera carga)
+        if (!isFirstLoad && previousDataRef.current.notes.length > 0) {
+          const newNotes = sharedNotes.filter(n => 
+            !previousDataRef.current.notes.some(prev => prev._id === n._id)
+          );
+          if (newNotes.length > 0) {
+            newNotes.forEach(note => {
+              notificationService.sendLocalNotification(
+                '📝 Nueva nota compartida',
+                `${note.createdBy?.username || 'Alguien'} compartió: "${note.title}"`,
+                { type: 'note', id: note._id }
+              );
+            });
+          }
+        }
+        previousDataRef.current.notes = sharedNotes;
+        
+        sharedNotes.slice(0, 2).forEach(note => {
+          notifs.push({
+            id: `note-${note._id}`,
+            type: 'note',
+            icon: 'document',
+            color: '#ec4899',
+            title: 'Nota compartida',
+            message: `${note.createdBy?.username || 'Alguien'} compartió: "${note.title}"`,
+            time: note.createdAt
+          });
+        });
+      } catch (error) {
+        console.log('Error cargando notas:', error);
+      }
+
+      // Guardar estado actual para la próxima comparación
+      await savePreviousState();
 
       // Ordenar por fecha más reciente y filtrar desestimadas
       notifs.sort((a, b) => new Date(b.time) - new Date(a.time));
