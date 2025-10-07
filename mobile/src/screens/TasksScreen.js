@@ -37,14 +37,14 @@ export default function TasksScreen({ route }) {
       
       if (openModal) {
         // Abrir modal para crear nueva tarea
-        handleAddTask();
+        setModalVisible(true);
         // Limpiar parámetro
         route.params.openModal = undefined;
       }
       
       if (editTask) {
         // Abrir modal para editar tarea existente
-        handleEditTask(editTask);
+        handleEdit(editTask);
         // Limpiar parámetro
         route.params.editTask = undefined;
       }

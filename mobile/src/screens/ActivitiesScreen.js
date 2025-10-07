@@ -54,7 +54,7 @@ export default function ActivitiesScreen({ route }) {
       
       if (openModal) {
         // Abrir modal para crear nueva actividad
-        handleAddActivity();
+        setModalVisible(true);
         if (date) {
           // Pre-configurar fecha
           const [year, month, day] = date.split('-');
@@ -68,7 +68,7 @@ export default function ActivitiesScreen({ route }) {
       
       if (editActivity) {
         // Abrir modal para editar actividad existente
-        handleEditActivity(editActivity);
+        handleEdit(editActivity);
         // Limpiar parámetro
         route.params.editActivity = undefined;
       }
