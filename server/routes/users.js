@@ -177,35 +177,8 @@ router.get('/autocomplete', authenticateToken, async (req, res) => {
   }
 });
 
-// Vincular institución a usuario (con ID en URL - RESTful)
-router.post('/institutions/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log('Vinculando institución (URL):', id, 'Usuario:', req.user._id);
-    
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-    
-    if (!user.institutions.includes(id)) {
-      user.institutions.push(id);
-      // Usar findByIdAndUpdate para evitar trigger del hook de password
-      await User.findByIdAndUpdate(req.user._id, {
-        $addToSet: { institutions: id }
-      });
-    }
-    
-    console.log('✅ Institución vinculada exitosamente');
-    res.json({ message: 'Institución vinculada exitosamente' });
-  } catch (error) {
-    console.error('❌ Error al vincular institución:', error);
-    res.status(500).json({ message: 'Error al vincular institución', error: error.message });
-  }
-});
-
 // Vincular institución a usuario (ruta legacy - con ID en body)
+// ⚠️ IMPORTANTE: Esta ruta debe estar ANTES de /institutions/:id
 router.post('/institutions/link', authenticateToken, async (req, res) => {
   try {
     const { institutionId } = req.body;
@@ -225,6 +198,35 @@ router.post('/institutions/link', authenticateToken, async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
       $addToSet: { institutions: institutionId }
     });
+    
+    console.log('✅ Institución vinculada exitosamente');
+    res.json({ message: 'Institución vinculada exitosamente' });
+  } catch (error) {
+    console.error('❌ Error al vincular institución:', error);
+    res.status(500).json({ message: 'Error al vincular institución', error: error.message });
+  }
+});
+
+// Vincular institución a usuario (con ID en URL - RESTful)
+// ⚠️ Esta ruta debe estar DESPUÉS de /institutions/link
+router.post('/institutions/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Vinculando institución (URL):', id, 'Usuario:', req.user._id);
+    
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    if (!user.institutions.includes(id)) {
+      user.institutions.push(id);
+      // Usar findByIdAndUpdate para evitar trigger del hook de password
+      await User.findByIdAndUpdate(req.user._id, {
+        $addToSet: { institutions: id }
+      });
+    }
     
     console.log('✅ Institución vinculada exitosamente');
     res.json({ message: 'Institución vinculada exitosamente' });
