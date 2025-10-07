@@ -155,10 +155,21 @@ export default function HomeScreen() {
       
       // Actividades compartidas conmigo
       const activitiesRes = await activitiesAPI.getAll();
-      const sharedActivities = activitiesRes.data.filter(activity => 
-        activity.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
-        activity.createdBy?._id !== user?._id
-      );
+      const sharedActivities = activitiesRes.data.filter(activity => {
+        if (!activity.sharedWith || activity.sharedWith.length === 0) return false;
+        
+        // Verificar si el usuario actual está en sharedWith
+        const isShared = activity.sharedWith.some(u => {
+          const sharedUserId = typeof u === 'string' ? u : u._id;
+          return sharedUserId === user?._id || sharedUserId === user?.id;
+        });
+        
+        // Verificar que no sea el creador
+        const creatorId = typeof activity.createdBy === 'string' ? activity.createdBy : activity.createdBy?._id;
+        const isNotCreator = creatorId !== user?._id && creatorId !== user?.id;
+        
+        return isShared && isNotCreator;
+      });
       
       // Detectar nuevas actividades y enviar notificación push (solo si no es la primera carga)
       if (!isFirstLoad && previousDataRef.current.activities.length > 0) {
@@ -187,10 +198,19 @@ export default function HomeScreen() {
 
       // Tareas compartidas conmigo
       const tasksRes = await tasksAPI.getAll();
-      const sharedTasks = tasksRes.data.filter(task => 
-        task.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
-        task.createdBy?._id !== user?._id
-      );
+      const sharedTasks = tasksRes.data.filter(task => {
+        if (!task.sharedWith || task.sharedWith.length === 0) return false;
+        
+        const isShared = task.sharedWith.some(u => {
+          const sharedUserId = typeof u === 'string' ? u : u._id;
+          return sharedUserId === user?._id || sharedUserId === user?.id;
+        });
+        
+        const creatorId = typeof task.createdBy === 'string' ? task.createdBy : task.createdBy?._id;
+        const isNotCreator = creatorId !== user?._id && creatorId !== user?.id;
+        
+        return isShared && isNotCreator;
+      });
       
       // Detectar nuevas tareas y enviar notificación push (solo si no es la primera carga)
       if (!isFirstLoad && previousDataRef.current.tasks.length > 0) {
@@ -219,10 +239,19 @@ export default function HomeScreen() {
 
       // Reclamos compartidos conmigo
       const complaintsRes = await complaintsAPI.getAll();
-      const sharedComplaints = complaintsRes.data.filter(complaint => 
-        complaint.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
-        complaint.createdBy?._id !== user?._id
-      );
+      const sharedComplaints = complaintsRes.data.filter(complaint => {
+        if (!complaint.sharedWith || complaint.sharedWith.length === 0) return false;
+        
+        const isShared = complaint.sharedWith.some(u => {
+          const sharedUserId = typeof u === 'string' ? u : u._id;
+          return sharedUserId === user?._id || sharedUserId === user?.id;
+        });
+        
+        const creatorId = typeof complaint.createdBy === 'string' ? complaint.createdBy : complaint.createdBy?._id;
+        const isNotCreator = creatorId !== user?._id && creatorId !== user?.id;
+        
+        return isShared && isNotCreator;
+      });
       
       // Detectar nuevos reclamos y enviar notificación push (solo si no es la primera carga)
       if (!isFirstLoad && previousDataRef.current.complaints.length > 0) {
@@ -309,10 +338,19 @@ export default function HomeScreen() {
       try {
         const notesAPI = require('../config/api').notesAPI;
         const notesRes = await notesAPI.getAll();
-        const sharedNotes = notesRes.data.filter(note => 
-          note.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
-          note.createdBy?._id !== user?._id
-        );
+        const sharedNotes = notesRes.data.filter(note => {
+          if (!note.sharedWith || note.sharedWith.length === 0) return false;
+          
+          const isShared = note.sharedWith.some(u => {
+            const sharedUserId = typeof u === 'string' ? u : u._id;
+            return sharedUserId === user?._id || sharedUserId === user?.id;
+          });
+          
+          const creatorId = typeof note.createdBy === 'string' ? note.createdBy : note.createdBy?._id;
+          const isNotCreator = creatorId !== user?._id && creatorId !== user?.id;
+          
+          return isShared && isNotCreator;
+        });
         
         // Detectar nuevas notas y enviar notificación push (solo si no es la primera carga)
         if (!isFirstLoad && previousDataRef.current.notes.length > 0) {

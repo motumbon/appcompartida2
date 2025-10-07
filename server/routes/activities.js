@@ -1,14 +1,14 @@
 import express from 'express';
-import Activity from '../models/Activity.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { uploadActivityFiles } from '../middleware/upload.js';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+const Activity = require('../models/Activity');
+const { authenticateToken } = require('../middleware/auth');
+const upload = require('../middleware/upload');
+const pushNotificationService = require('../services/pushNotificationService');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const router = express.Router();
 
 // Obtener actividades del usuario
