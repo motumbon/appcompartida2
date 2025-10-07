@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import { Calendar } from 'react-native-calendars';
 import { useAuth } from '../contexts/AuthContext';
 import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI } from '../config/api';
+import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [stats, setStats] = useState({ activities: 0, tasks: 0, complaints: 0, contracts: 0 });
   const [notifications, setNotifications] = useState([]);
   const [dismissedNotifications, setDismissedNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [allActivities, setAllActivities] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
+  const [todayActivities, setTodayActivities] = useState([]);
+  const [pendingTasks, setPendingTasks] = useState([]);
 
   useEffect(() => {
     loadDismissedNotifications();
@@ -45,9 +53,26 @@ export default function HomeScreen() {
         contractsAPI.getAll()
       ]);
 
+      const activities = activitiesRes.data;
+      const tasks = tasksRes.data;
+      
+      setAllActivities(activities);
+      setAllTasks(tasks);
+
+      // Filtrar actividades de hoy
+      const today = new Date().toISOString().split('T')[0];
+      const todayActs = activities.filter(a => 
+        a.scheduledDate && a.scheduledDate.split('T')[0] === today
+      );
+      setTodayActivities(todayActs);
+
+      // Filtrar tareas pendientes (máximo 5)
+      const pending = tasks.filter(t => t.status !== 'completada').slice(0, 5);
+      setPendingTasks(pending);
+
       setStats({
-        activities: activitiesRes.data.length,
-        tasks: tasksRes.data.filter(t => t.status !== 'completada').length,
+        activities: activities.length,
+        tasks: tasks.filter(t => t.status !== 'completada').length,
         complaints: complaintsRes.data.filter(c => c.status !== 'cerrado').length,
         contracts: contractsRes.data.length
       });
@@ -185,6 +210,70 @@ export default function HomeScreen() {
     return past.toLocaleDateString('es');
   };
 
+  // Marcar fechas en el calendario
+  const getMarkedDates = () => {
+    const marked = {};
+    
+    // Marcar día seleccionado
+    marked[selectedDate] = {
+      selected: true,
+      selectedColor: '#3b82f6'
+    };
+    
+    // Marcar días con actividades
+    allActivities.forEach(activity => {
+      if (activity.scheduledDate) {
+        const date = activity.scheduledDate.split('T')[0];
+        if (date !== selectedDate) {
+          marked[date] = {
+            ...marked[date],
+            marked: true,
+            dotColor: '#10b981'
+          };
+        } else {
+          marked[date] = {
+            ...marked[date],
+            selected: true,
+            selectedColor: '#3b82f6',
+            marked: true,
+            dotColor: '#fff'
+          };
+        }
+      }
+    });
+    
+    return marked;
+  };
+
+  // Toggle tarea completada
+  const toggleTaskStatus = async (task) => {
+    try {
+      const newStatus = task.status === 'completada' ? 'pendiente' : 'completada';
+      await tasksAPI.update(task._id, { status: newStatus });
+      
+      // Actualizar localmente
+      const updated = pendingTasks.map(t => 
+        t._id === task._id ? { ...t, status: newStatus } : t
+      );
+      setPendingTasks(updated.filter(t => t.status !== 'completada'));
+      
+      // Recargar stats
+      await loadStats();
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo actualizar la tarea');
+    }
+  };
+
+  // Navegar a crear actividad
+  const createNewActivity = () => {
+    navigation.navigate('Activities', { openModal: true, date: selectedDate });
+  };
+
+  // Navegar a crear tarea
+  const createNewTask = () => {
+    navigation.navigate('Tasks', { openModal: true });
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -226,6 +315,112 @@ export default function HomeScreen() {
           <Text style={styles.statNumber}>{stats.contracts}</Text>
           <Text style={styles.statLabel}>Contratos</Text>
         </View>
+      </View>
+
+      {/* Dashboard de Calendario */}
+      <View style={styles.dashboardSection}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="calendar" size={22} color="#1f2937" />
+          <Text style={styles.sectionTitle2}>Calendario</Text>
+        </View>
+        <View style={styles.calendarContainer}>
+          <Calendar
+            current={selectedDate}
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            markedDates={getMarkedDates()}
+            theme={{
+              todayTextColor: '#3b82f6',
+              selectedDayBackgroundColor: '#3b82f6',
+              selectedDayTextColor: '#ffffff',
+              arrowColor: '#3b82f6',
+              monthTextColor: '#1f2937',
+              textMonthFontWeight: 'bold',
+              textDayFontSize: 14,
+              textMonthFontSize: 16,
+            }}
+          />
+        </View>
+        
+        {/* Actividades del día seleccionado */}
+        <View style={styles.activitiesOfDay}>
+          <Text style={styles.dayTitle}>
+            {selectedDate === new Date().toISOString().split('T')[0] 
+              ? 'Actividades de Hoy' 
+              : `Actividades del ${new Date(selectedDate).toLocaleDateString('es')}`}
+          </Text>
+          {allActivities.filter(a => a.scheduledDate?.split('T')[0] === selectedDate).length === 0 ? (
+            <Text style={styles.emptyText}>No hay actividades programadas</Text>
+          ) : (
+            allActivities
+              .filter(a => a.scheduledDate?.split('T')[0] === selectedDate)
+              .map((activity) => (
+                <TouchableOpacity 
+                  key={activity._id} 
+                  style={styles.activityItem}
+                  onPress={() => navigation.navigate('Activities')}
+                >
+                  <View style={styles.activityTime}>
+                    <Ionicons name="time" size={16} color="#6b7280" />
+                    <Text style={styles.timeText}>
+                      {activity.scheduledDate?.split('T')[1]?.substring(0, 5) || '--:--'}
+                    </Text>
+                  </View>
+                  <Text style={styles.activityTitle}>{activity.subject}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                </TouchableOpacity>
+              ))
+          )}
+          <TouchableOpacity style={styles.addButton} onPress={createNewActivity}>
+            <Ionicons name="add-circle" size={20} color="#3b82f6" />
+            <Text style={styles.addButtonText}>Nueva Actividad</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Dashboard de Tareas */}
+      <View style={styles.dashboardSection}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="checkmark-circle" size={22} color="#1f2937" />
+          <Text style={styles.sectionTitle2}>Tareas Pendientes</Text>
+        </View>
+        {pendingTasks.length === 0 ? (
+          <Text style={styles.emptyText}>No tienes tareas pendientes</Text>
+        ) : (
+          pendingTasks.map((task) => (
+            <TouchableOpacity
+              key={task._id}
+              style={styles.taskItem}
+              onPress={() => navigation.navigate('Tasks')}
+            >
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleTaskStatus(task);
+                }}
+              >
+                {task.status === 'completada' ? (
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                ) : (
+                  <Ionicons name="ellipse-outline" size={24} color="#9ca3af" />
+                )}
+              </TouchableOpacity>
+              <View style={styles.taskContent}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                {task.dueDate && (
+                  <Text style={styles.taskDue}>
+                    Vence: {new Date(task.dueDate).toLocaleDateString('es')}
+                  </Text>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+          ))
+        )}
+        <TouchableOpacity style={styles.addButton} onPress={createNewTask}>
+          <Ionicons name="add-circle" size={20} color="#8b5cf6" />
+          <Text style={[styles.addButtonText, { color: '#8b5cf6' }]}>Nueva Tarea</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Sección de Notificaciones */}
@@ -402,5 +597,118 @@ const styles = StyleSheet.create({
   dismissButton: {
     padding: 4,
     marginLeft: 8,
+  },
+  dashboardSection: {
+    margin: 10,
+    marginTop: 0,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  sectionTitle2: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginLeft: 8,
+  },
+  calendarContainer: {
+    marginBottom: 15,
+  },
+  activitiesOfDay: {
+    marginTop: 10,
+  },
+  dayTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 15,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 10,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#10b981',
+  },
+  activityTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  timeText: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  activityTitle: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 10,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#8b5cf6',
+  },
+  checkbox: {
+    marginRight: 12,
+  },
+  taskContent: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  taskDue: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderStyle: 'dashed',
+  },
+  addButtonText: {
+    fontSize: 14,
+    color: '#3b82f6',
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
