@@ -5,7 +5,7 @@ const pushTokenSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true  // Un usuario = un token
+    unique: true  // Un usuario = un token (esto ya crea el índice)
   },
   token: {
     type: String,
@@ -20,6 +20,6 @@ const pushTokenSchema = new mongoose.Schema({
   }
 });
 
-pushTokenSchema.index({ user: 1 });
+// Índice removido - ya existe por el campo unique: true
 
 export default mongoose.model('PushToken', pushTokenSchema);
