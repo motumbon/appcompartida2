@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { checkAPIConnection } from '../config/api';
+import { useResponsive } from '../hooks/useResponsive';
 
 export default function LoginScreen({ navigation }) {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
@@ -9,6 +10,7 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [apiStatus, setApiStatus] = useState('checking');
   const { login } = useAuth();
+  const { isLandscape, isTablet, wp } = useResponsive();
 
   useEffect(() => {
     checkConnection();
@@ -54,65 +56,81 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const contentWidth = isLandscape && isTablet ? wp(50) : isTablet ? wp(70) : '100%';
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>App Trabajo en Terreno</Text>
-        <Text style={styles.subtitle}>Iniciar Sesión</Text>
-
-        {/* Indicador de estado de conexión */}
-        <View style={styles.statusContainer}>
-          <View style={[
-            styles.statusDot,
-            apiStatus === 'connected' ? styles.statusConnected : 
-            apiStatus === 'disconnected' ? styles.statusDisconnected : 
-            styles.statusChecking
-          ]} />
-          <Text style={styles.statusText}>
-            {apiStatus === 'connected' ? 'Servidor conectado' :
-             apiStatus === 'disconnected' ? 'Sin conexión al servidor' :
-             'Verificando conexión...'}
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          isLandscape && styles.scrollContentLandscape
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.content, { width: contentWidth, maxWidth: 500 }]}>
+          <Text style={[styles.title, isTablet && styles.titleTablet]}>
+            App Trabajo en Terreno
           </Text>
-          {apiStatus === 'disconnected' && (
-            <TouchableOpacity onPress={checkConnection} style={styles.retryButton}>
-              <Text style={styles.retryText}>↻</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={[styles.subtitle, isTablet && styles.subtitleTablet]}>
+            Iniciar Sesión
+          </Text>
+
+          {/* Indicador de estado de conexión */}
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusDot,
+              apiStatus === 'connected' ? styles.statusConnected : 
+              apiStatus === 'disconnected' ? styles.statusDisconnected : 
+              styles.statusChecking
+            ]} />
+            <Text style={[styles.statusText, isTablet && styles.statusTextTablet]}>
+              {apiStatus === 'connected' ? 'Servidor conectado' :
+               apiStatus === 'disconnected' ? 'Sin conexión al servidor' :
+               'Verificando conexión...'}
+            </Text>
+            {apiStatus === 'disconnected' && (
+              <TouchableOpacity onPress={checkConnection} style={styles.retryButton}>
+                <Text style={styles.retryText}>↻</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TextInput
+            style={[styles.input, isTablet && styles.inputTablet]}
+            placeholder="Usuario o Email"
+            value={usernameOrEmail}
+            onChangeText={setUsernameOrEmail}
+            autoCapitalize="none"
+          />
+
+          <TextInput
+            style={[styles.input, isTablet && styles.inputTablet]}
+            placeholder="Contraseña"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled, isTablet && styles.buttonTablet]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>
+              {loading ? 'Iniciando...' : 'Iniciar Sesión'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={[styles.link, isTablet && styles.linkTablet]}>
+              ¿No tienes cuenta? Regístrate
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Usuario o Email"
-          value={usernameOrEmail}
-          onChangeText={setUsernameOrEmail}
-          autoCapitalize="none"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>¿No tienes cuenta? Regístrate</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -122,10 +140,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#3b82f6',
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
+  },
+  scrollContentLandscape: {
+    paddingVertical: 10,
+  },
+  content: {
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     fontSize: 28,
@@ -134,11 +160,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
   },
+  titleTablet: {
+    fontSize: 36,
+  },
   subtitle: {
     fontSize: 18,
     color: '#fff',
     textAlign: 'center',
     marginBottom: 30,
+  },
+  subtitleTablet: {
+    fontSize: 24,
   },
   input: {
     backgroundColor: '#fff',
@@ -147,11 +179,18 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
   },
+  inputTablet: {
+    padding: 18,
+    fontSize: 18,
+  },
   button: {
     backgroundColor: '#1e40af',
     padding: 15,
     borderRadius: 10,
     marginTop: 10,
+  },
+  buttonTablet: {
+    padding: 18,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -162,11 +201,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  buttonTextTablet: {
+    fontSize: 18,
+  },
   link: {
     color: '#fff',
     textAlign: 'center',
     marginTop: 20,
     fontSize: 14,
+  },
+  linkTablet: {
+    fontSize: 16,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -196,6 +241,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     flex: 1,
+  },
+  statusTextTablet: {
+    fontSize: 14,
   },
   retryButton: {
     padding: 5,

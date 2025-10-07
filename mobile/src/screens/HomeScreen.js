@@ -7,10 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI, notesAPI } from '../config/api';
 import { useNavigation } from '@react-navigation/native';
 import notificationService from '../services/notificationService';
+import { useResponsive } from '../hooks/useResponsive';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
+  const { isLandscape, isTablet, width } = useResponsive();
   const [stats, setStats] = useState({ activities: 0, tasks: 0, complaints: 0, contracts: 0 });
   const [notifications, setNotifications] = useState([]);
   const [dismissedNotifications, setDismissedNotifications] = useState([]);
@@ -500,46 +502,48 @@ export default function HomeScreen() {
     });
   };
 
+  const useColumns = isLandscape || (isTablet && width > 900);
+
   return (
     <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={styles.header}>
-        <Text style={styles.greeting}>¡Hola, {user?.username}!</Text>
+      <View style={[styles.header, isTablet && styles.headerTablet]}>
+        <Text style={[styles.greeting, isTablet && styles.greetingTablet]}>¡Hola, {user?.username}!</Text>
         {user?.isAdmin && (
           <View style={styles.adminBadge}>
-            <Text style={styles.adminText}>Administrador</Text>
+            <Text style={[styles.adminText, isTablet && styles.adminTextTablet]}>Administrador</Text>
           </View>
         )}
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+          <Ionicons name="log-out-outline" size={isTablet ? 28 : 24} color="#ef4444" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-          <Ionicons name="calendar" size={20} color="#fff" />
-          <Text style={styles.statNumber}>{stats.activities}</Text>
-          <Text style={styles.statLabel}>Actividades</Text>
+      <View style={[styles.statsContainer, useColumns && styles.statsContainerColumns]}>      
+        <View style={[styles.statCard, isTablet && styles.statCardTablet, { backgroundColor: '#10b981' }]}>
+          <Ionicons name="calendar" size={isTablet ? 28 : 20} color="#fff" />
+          <Text style={[styles.statNumber, isTablet && styles.statNumberTablet]}>{stats.activities}</Text>
+          <Text style={[styles.statLabel, isTablet && styles.statLabelTablet]}>Actividades</Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
-          <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          <Text style={styles.statNumber}>{stats.tasks}</Text>
-          <Text style={styles.statLabel}>Tareas</Text>
+        <View style={[styles.statCard, isTablet && styles.statCardTablet, { backgroundColor: '#8b5cf6' }]}>
+          <Ionicons name="checkmark-circle" size={isTablet ? 28 : 20} color="#fff" />
+          <Text style={[styles.statNumber, isTablet && styles.statNumberTablet]}>{stats.tasks}</Text>
+          <Text style={[styles.statLabel, isTablet && styles.statLabelTablet]}>Tareas</Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-          <Ionicons name="alert-circle" size={20} color="#fff" />
-          <Text style={styles.statNumber}>{stats.complaints}</Text>
-          <Text style={styles.statLabel}>Reclamos</Text>
+        <View style={[styles.statCard, isTablet && styles.statCardTablet, { backgroundColor: '#f59e0b' }]}>
+          <Ionicons name="alert-circle" size={isTablet ? 28 : 20} color="#fff" />
+          <Text style={[styles.statNumber, isTablet && styles.statNumberTablet]}>{stats.complaints}</Text>
+          <Text style={[styles.statLabel, isTablet && styles.statLabelTablet]}>Reclamos</Text>
         </View>
 
-        <View style={[styles.statCard, { backgroundColor: '#6366f1' }]}>
-          <Ionicons name="document-text" size={20} color="#fff" />
-          <Text style={styles.statNumber}>{stats.contracts}</Text>
-          <Text style={styles.statLabel}>Contratos</Text>
+        <View style={[styles.statCard, isTablet && styles.statCardTablet, { backgroundColor: '#6366f1' }]}>
+          <Ionicons name="document-text" size={isTablet ? 28 : 20} color="#fff" />
+          <Text style={[styles.statNumber, isTablet && styles.statNumberTablet]}>{stats.contracts}</Text>
+          <Text style={[styles.statLabel, isTablet && styles.statLabelTablet]}>Contratos</Text>
         </View>
       </View>
 
@@ -902,5 +906,29 @@ const styles = StyleSheet.create({
     color: '#3b82f6',
     fontWeight: '600',
     marginLeft: 6,
+  },
+  // Estilos responsivos para tablets
+  headerTablet: {
+    padding: 24,
+  },
+  greetingTablet: {
+    fontSize: 24,
+  },
+  adminTextTablet: {
+    fontSize: 14,
+  },
+  statsContainerColumns: {
+    flexWrap: 'wrap',
+    padding: 16,
+  },
+  statCardTablet: {
+    padding: 20,
+    minWidth: 150,
+  },
+  statNumberTablet: {
+    fontSize: 28,
+  },
+  statLabelTablet: {
+    fontSize: 12,
   },
 });
