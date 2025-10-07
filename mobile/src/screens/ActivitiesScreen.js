@@ -33,6 +33,13 @@ export default function ActivitiesScreen() {
     scheduledTime: ''
   });
   const [selectedUsers, setSelectedUsers] = useState([]);
+  
+  // Estados para fecha y hora
+  const [dateDay, setDateDay] = useState('');
+  const [dateMonth, setDateMonth] = useState('');
+  const [dateYear, setDateYear] = useState('');
+  const [timeHour, setTimeHour] = useState('');
+  const [timeMinute, setTimeMinute] = useState('');
 
   useEffect(() => {
     loadActivities();
@@ -72,6 +79,21 @@ export default function ActivitiesScreen() {
     await loadActivities();
     setRefreshing(false);
   };
+
+  // Actualizar scheduledDate cuando cambian los pickers
+  useEffect(() => {
+    if (dateYear && dateMonth && dateDay) {
+      const newDate = `${dateYear}-${dateMonth.padStart(2, '0')}-${dateDay.padStart(2, '0')}`;
+      setFormData(prev => ({ ...prev, scheduledDate: newDate }));
+    }
+  }, [dateYear, dateMonth, dateDay]);
+
+  useEffect(() => {
+    if (timeHour && timeMinute !== '') {
+      const newTime = `${timeHour.padStart(2, '0')}:${timeMinute.padStart(2, '0')}`;
+      setFormData(prev => ({ ...prev, scheduledTime: newTime }));
+    }
+  }, [timeHour, timeMinute]);
 
   const handleSubmit = async () => {
     if (!formData.subject) {
@@ -113,23 +135,45 @@ export default function ActivitiesScreen() {
     setEditingActivity(null);
     setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [], scheduledDate: '', scheduledTime: '' });
     setSelectedUsers([]);
+    setDateDay('');
+    setDateMonth('');
+    setDateYear('');
+    setTimeHour('');
+    setTimeMinute('');
   };
 
   const handleEdit = (activity) => {
     setEditingActivity(activity);
+    const scheduledDate = activity.scheduledDate ? activity.scheduledDate.split('T')[0] : '';
+    const scheduledTime = activity.scheduledDate ? activity.scheduledDate.split('T')[1]?.substring(0, 5) : '';
+    
+    // Parsear fecha
+    if (scheduledDate) {
+      const [year, month, day] = scheduledDate.split('-');
+      setDateYear(year);
+      setDateMonth(month);
+      setDateDay(day);
+    }
+    
+    // Parsear hora
+    if (scheduledTime) {
+      const [hour, minute] = scheduledTime.split(':');
+      setTimeHour(hour);
+      setTimeMinute(minute);
+    }
+    
     setFormData({
       subject: activity.subject,
       comment: activity.comment || '',
       status: activity.status,
       institution: activity.institution?._id || '',
       sharedWith: activity.sharedWith?.map(u => u._id) || [],
-      scheduledDate: activity.scheduledDate ? activity.scheduledDate.split('T')[0] : '',
-      scheduledTime: activity.scheduledDate ? activity.scheduledDate.split('T')[1]?.substring(0, 5) : ''
+      scheduledDate: scheduledDate,
+      scheduledTime: scheduledTime
     });
     setSelectedUsers(activity.sharedWith?.map(u => u._id) || []);
     setModalVisible(true);
   };
-
   const handleDoubleTap = (activity) => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
@@ -284,6 +328,12 @@ export default function ActivitiesScreen() {
 
   const openNewActivityFromCalendar = () => {
     if (selectedDate) {
+      const [year, month, day] = selectedDate.split('-');
+      setDateYear(year);
+      setDateMonth(month);
+      setDateDay(day);
+      setTimeHour('09');
+      setTimeMinute('00');
       setFormData({ ...formData, scheduledDate: selectedDate, scheduledTime: '09:00' });
     }
     setModalVisible(true);
@@ -552,20 +602,82 @@ export default function ActivitiesScreen() {
               />
 
               <Text style={styles.label}>Fecha programada</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.scheduledDate}
-                onChangeText={(text) => setFormData({ ...formData, scheduledDate: text })}
-                placeholder="YYYY-MM-DD"
-              />
+              <View style={styles.datePickersRow}>
+                <View style={[styles.pickerContainer, { flex: 1, marginRight: 4 }]}>
+                  <Picker
+                    selectedValue={dateDay}
+                    onValueChange={(value) => setDateDay(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Día" value="" />
+                    {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+                      <Picker.Item key={day} label={String(day)} value={String(day)} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, { flex: 1, marginHorizontal: 4 }]}>
+                  <Picker
+                    selectedValue={dateMonth}
+                    onValueChange={(value) => setDateMonth(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Mes" value="" />
+                    <Picker.Item label="Enero" value="1" />
+                    <Picker.Item label="Febrero" value="2" />
+                    <Picker.Item label="Marzo" value="3" />
+                    <Picker.Item label="Abril" value="4" />
+                    <Picker.Item label="Mayo" value="5" />
+                    <Picker.Item label="Junio" value="6" />
+                    <Picker.Item label="Julio" value="7" />
+                    <Picker.Item label="Agosto" value="8" />
+                    <Picker.Item label="Septiembre" value="9" />
+                    <Picker.Item label="Octubre" value="10" />
+                    <Picker.Item label="Noviembre" value="11" />
+                    <Picker.Item label="Diciembre" value="12" />
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, { flex: 1, marginLeft: 4 }]}>
+                  <Picker
+                    selectedValue={dateYear}
+                    onValueChange={(value) => setDateYear(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Año" value="" />
+                    {Array.from({length: 5}, (_, i) => 2025 + i).map(year => (
+                      <Picker.Item key={year} label={String(year)} value={String(year)} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
 
               <Text style={styles.label}>Hora programada</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.scheduledTime}
-                onChangeText={(text) => setFormData({ ...formData, scheduledTime: text })}
-                placeholder="HH:MM (ej: 14:30)"
-              />
+              <View style={styles.datePickersRow}>
+                <View style={[styles.pickerContainer, { flex: 1, marginRight: 8 }]}>
+                  <Picker
+                    selectedValue={timeHour}
+                    onValueChange={(value) => setTimeHour(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Hora" value="" />
+                    {Array.from({length: 24}, (_, i) => i).map(hour => (
+                      <Picker.Item key={hour} label={String(hour).padStart(2, '0')} value={String(hour)} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, { flex: 1, marginLeft: 8 }]}>
+                  <Picker
+                    selectedValue={timeMinute}
+                    onValueChange={(value) => setTimeMinute(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Min" value="" />
+                    <Picker.Item label="00" value="0" />
+                    <Picker.Item label="15" value="15" />
+                    <Picker.Item label="30" value="30" />
+                    <Picker.Item label="45" value="45" />
+                  </Picker>
+                </View>
+              </View>
 
               <Text style={styles.label}>Institución</Text>
               <View style={styles.pickerContainer}>
@@ -942,6 +1054,10 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  datePickersRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
   },
   usersList: {
     maxHeight: 200,

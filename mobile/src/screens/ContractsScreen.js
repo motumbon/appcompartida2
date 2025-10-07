@@ -13,7 +13,7 @@ export default function ContractsScreen() {
     status: '',
     cliente: '',
     linea: '',
-    material: ''
+    denominacion: ''
   });
 
   useEffect(() => {
@@ -80,20 +80,20 @@ export default function ContractsScreen() {
     return [...new Set(lineas)].sort();
   };
 
-  const getFilteredMateriales = () => {
+  const getFilteredDenominaciones = () => {
     let filtered = contracts;
     if (filters.kam) filtered = filtered.filter(c => c.kamRepr === filters.kam);
     if (filters.cliente) filtered = filtered.filter(c => c.nomCliente === filters.cliente);
     if (filters.linea) filtered = filtered.filter(c => c.linea === filters.linea);
-    const materiales = filtered.map(c => c.material).filter(Boolean);
-    return [...new Set(materiales)].sort();
+    const denominaciones = filtered.map(c => c.denominacion).filter(Boolean);
+    return [...new Set(denominaciones)].sort();
   };
 
   const getFilteredContracts = () => {
     return contracts.filter(contract => {
       const matchKam = !filters.kam || contract.kamRepr === filters.kam;
       const matchCliente = !filters.cliente || contract.nomCliente === filters.cliente;
-      const matchMaterial = !filters.material || contract.material === filters.material;
+      const matchDenominacion = !filters.denominacion || contract.denominacion === filters.denominacion;
       const matchLinea = !filters.linea || contract.linea === filters.linea;
       
       // Filtro de status
@@ -109,12 +109,12 @@ export default function ContractsScreen() {
         }
       }
       
-      return matchKam && matchCliente && matchMaterial && matchLinea && matchStatus;
+      return matchKam && matchCliente && matchDenominacion && matchLinea && matchStatus;
     });
   };
 
   const hasActiveFilters = () => {
-    return filters.kam || filters.status || filters.cliente || filters.material || filters.linea;
+    return filters.kam || filters.status || filters.cliente || filters.denominacion || filters.linea;
   };
 
   const clearFilters = () => {
@@ -123,7 +123,7 @@ export default function ContractsScreen() {
       status: '',
       cliente: '',
       linea: '',
-      material: ''
+      denominacion: ''
     });
   };
 
@@ -238,7 +238,7 @@ export default function ContractsScreen() {
                     status: filters.status,
                     cliente: '',
                     linea: '',
-                    material: ''
+                    denominacion: ''
                   })}
                   style={styles.picker}
                 >
@@ -273,7 +273,7 @@ export default function ContractsScreen() {
                     ...filters,
                     cliente: value,
                     linea: '',
-                    material: ''
+                    denominacion: ''
                   })}
                   style={styles.picker}
                   enabled={!filters.kam || getFilteredClientes().length > 0}
@@ -293,7 +293,7 @@ export default function ContractsScreen() {
                   onValueChange={(value) => setFilters({
                     ...filters,
                     linea: value,
-                    material: ''
+                    denominacion: ''
                   })}
                   style={styles.picker}
                   enabled={getFilteredLineas().length > 0}
@@ -305,18 +305,18 @@ export default function ContractsScreen() {
                 </Picker>
               </View>
 
-              {/* 5. Material */}
-              <Text style={styles.label}>Material</Text>
+              {/* 5. Denominación */}
+              <Text style={styles.label}>Denominación</Text>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={filters.material}
-                  onValueChange={(value) => setFilters({...filters, material: value})}
+                  selectedValue={filters.denominacion}
+                  onValueChange={(value) => setFilters({...filters, denominacion: value})}
                   style={styles.picker}
-                  enabled={getFilteredMateriales().length > 0}
+                  enabled={getFilteredDenominaciones().length > 0}
                 >
                   <Picker.Item label="Todos" value="" />
-                  {getFilteredMateriales().map((material) => (
-                    <Picker.Item key={material} label={material} value={material} />
+                  {getFilteredDenominaciones().map((denominacion) => (
+                    <Picker.Item key={denominacion} label={denominacion} value={denominacion} />
                   ))}
                 </Picker>
               </View>
