@@ -154,6 +154,30 @@ export default function TasksScreen() {
     });
   };
 
+  const handleDelete = (id) => {
+    Alert.alert(
+      'Eliminar Tarea',
+      '¿Estás seguro de eliminar esta tarea?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await tasksAPI.delete(id);
+              handleCloseModal();
+              loadTasks();
+              Alert.alert('Éxito', 'Tarea eliminada');
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const getPriorityColor = (priority) => {
     const colors = {
       baja: '#10b981',
@@ -429,6 +453,11 @@ export default function TasksScreen() {
                 <TouchableOpacity style={[styles.button, styles.buttonCancel]} onPress={handleCloseModal}>
                   <Text style={styles.buttonCancelText}>Cancelar</Text>
                 </TouchableOpacity>
+                {editingTask && (
+                  <TouchableOpacity style={[styles.button, styles.buttonDelete]} onPress={() => handleDelete(editingTask._id)}>
+                    <Text style={styles.buttonDeleteText}>Eliminar</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity style={[styles.button, styles.buttonSubmit]} onPress={handleSubmit}>
                   <Text style={styles.buttonSubmitText}>{editingTask ? 'Actualizar' : 'Crear'}</Text>
                 </TouchableOpacity>
@@ -534,6 +563,8 @@ const styles = StyleSheet.create({
   buttonCancelText: { fontSize: 16, fontWeight: '600', color: '#374151' },
   buttonSubmit: { backgroundColor: '#3b82f6' },
   buttonSubmitText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  buttonDelete: { backgroundColor: '#ef4444' },
+  buttonDeleteText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   checklistPreview: {
     backgroundColor: '#f9fafb',
     borderRadius: 8,

@@ -132,7 +132,8 @@ export const notesAPI = {
 export const usersAPI = {
   getUserInstitutions: () => api.get('/users/institutions'),
   linkInstitution: (institutionId) => api.post(`/users/institutions/${institutionId}`),
-  unlinkInstitution: (institutionId) => api.delete(`/users/institutions/${institutionId}`)
+  unlinkInstitution: (institutionId) => api.delete(`/users/institutions/${institutionId}`),
+  autocomplete: (query) => api.get(`/users/autocomplete?query=${encodeURIComponent(query)}`)
 };
 
 export const institutionsAPI = {

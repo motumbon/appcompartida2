@@ -1,16 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { complaintsAPI } from '../config/api';
+import { Picker } from '@react-native-picker/picker';
+import { complaintsAPI, contactsAPI, usersAPI } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ComplaintsScreen() {
+  const { user } = useAuth();
   const [complaints, setComplaints] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', clientName: '', priority: 'media', status: 'recibido' });
+  const [editingComplaint, setEditingComplaint] = useState(null);
+  const [lastTap, setLastTap] = useState(null);
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'recibido', 'en_revision', 'resuelto'
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    description: '', 
+    clientName: '', 
+    priority: 'media', 
+    status: 'recibido',
+    institution: '',
+    sharedWith: []
+  });
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   useEffect(() => {
     loadComplaints();
+    loadContacts();
+    loadInstitutions();
   }, []);
 
   const loadComplaints = async () => {
@@ -19,6 +38,24 @@ export default function ComplaintsScreen() {
       setComplaints(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar los reclamos');
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      const response = await contactsAPI.getAll();
+      setContacts(response.data.filter(c => c.isRegisteredUser && c.userId));
+    } catch (error) {
+      console.error('Error al cargar contactos:', error);
+    }
+  };
+
+  const loadInstitutions = async () => {
+    try {
+      const response = await usersAPI.getUserInstitutions();
+      setInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones:', error);
     }
   };
 
@@ -34,14 +71,95 @@ export default function ComplaintsScreen() {
       return;
     }
     try {
-      await complaintsAPI.create(formData);
-      Alert.alert('Éxito', 'Reclamo creado correctamente');
-      setModalVisible(false);
-      setFormData({ title: '', description: '', clientName: '', priority: 'media', status: 'recibido' });
+      const dataToSend = {
+        ...formData,
+        sharedWith: selectedUsers
+      };
+
+      if (editingComplaint) {
+        await complaintsAPI.update(editingComplaint._id, dataToSend);
+        Alert.alert('Éxito', 'Reclamo actualizado correctamente');
+      } else {
+        await complaintsAPI.create(dataToSend);
+        Alert.alert('Éxito', 'Reclamo creado correctamente');
+      }
+      handleCloseModal();
       loadComplaints();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'No se pudo crear el reclamo');
+      Alert.alert('Error', error.response?.data?.message || 'No se pudo guardar el reclamo');
     }
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setEditingComplaint(null);
+    setSelectedUsers([]);
+    setFormData({ title: '', description: '', clientName: '', priority: 'media', status: 'recibido', institution: '', sharedWith: [] });
+  };
+
+  const handleEdit = (complaint) => {
+    setEditingComplaint(complaint);
+    setFormData({
+      title: complaint.title,
+      description: complaint.description,
+      clientName: complaint.clientName,
+      priority: complaint.priority,
+      status: complaint.status,
+      institution: complaint.institution?._id || '',
+      sharedWith: complaint.sharedWith?.map(u => u._id) || []
+    });
+    setSelectedUsers(complaint.sharedWith?.map(u => u._id) || []);
+    setModalVisible(true);
+  };
+
+  const handleDoubleTap = (complaint) => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
+      handleEdit(complaint);
+    } else {
+      setLastTap(now);
+    }
+  };
+
+  const handleDelete = (id) => {
+    Alert.alert(
+      'Eliminar Reclamo',
+      '¿Estás seguro de eliminar este reclamo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await complaintsAPI.delete(id);
+              handleCloseModal();
+              loadComplaints();
+              Alert.alert('Éxito', 'Reclamo eliminado');
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const getFilteredComplaints = () => {
+    if (viewMode === 'all') return complaints;
+    if (viewMode === 'recibido') return complaints.filter(c => c.status === 'recibido');
+    if (viewMode === 'en_revision') return complaints.filter(c => c.status === 'en_revision');
+    if (viewMode === 'resuelto') return complaints.filter(c => c.status === 'resuelto');
+    return complaints;
   };
 
   const getPriorityColor = (priority) => {
@@ -66,7 +184,11 @@ export default function ComplaintsScreen() {
   };
 
   const renderComplaint = ({ item }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      onPress={() => handleDoubleTap(item)}
+      activeOpacity={0.7}
+      style={styles.card}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{item.title}</Text>
         <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -100,22 +222,178 @@ export default function ComplaintsScreen() {
           </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
+
+  const filteredComplaints = getFilteredComplaints();
 
   return (
     <View style={styles.container}>
-      <FlatList data={complaints} renderItem={renderComplaint} keyExtractor={(item) => item._id} contentContainerStyle={styles.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="alert-circle-outline" size={64} color="#d1d5db" /><Text style={styles.emptyText}>No hay reclamos</Text></View>} />
+      {/* Filtros */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'all' && styles.filterButtonActive]}
+            onPress={() => setViewMode('all')}
+          >
+            <Text style={[styles.filterText, viewMode === 'all' && styles.filterTextActive]}>
+              Todos
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'recibido' && styles.filterButtonActive]}
+            onPress={() => setViewMode('recibido')}
+          >
+            <Text style={[styles.filterText, viewMode === 'recibido' && styles.filterTextActive]}>
+              Recibidos
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'en_revision' && styles.filterButtonActive]}
+            onPress={() => setViewMode('en_revision')}
+          >
+            <Text style={[styles.filterText, viewMode === 'en_revision' && styles.filterTextActive]}>
+              En Revisión
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, viewMode === 'resuelto' && styles.filterButtonActive]}
+            onPress={() => setViewMode('resuelto')}
+          >
+            <Text style={[styles.filterText, viewMode === 'resuelto' && styles.filterTextActive]}>
+              Resueltos
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      <FlatList 
+        data={filteredComplaints} 
+        renderItem={renderComplaint} 
+        keyExtractor={(item) => item._id} 
+        contentContainerStyle={styles.list} 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} 
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color="#d1d5db" />
+            <Text style={styles.emptyText}>No hay reclamos</Text>
+          </View>
+        } 
+      />
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}><Ionicons name="add" size={24} color="#fff" /></TouchableOpacity>
-      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Nuevo Reclamo</Text><TouchableOpacity onPress={() => setModalVisible(false)}><Ionicons name="close" size={24} color="#666" /></TouchableOpacity></View>
-          <ScrollView style={styles.modalForm}>
-            <Text style={styles.label}>Título *</Text><TextInput style={styles.input} value={formData.title} onChangeText={(text) => setFormData({ ...formData, title: text })} placeholder="Título del reclamo" />
-            <Text style={styles.label}>Descripción *</Text><TextInput style={[styles.input, styles.textArea]} value={formData.description} onChangeText={(text) => setFormData({ ...formData, description: text })} placeholder="Descripción detallada" multiline numberOfLines={4} />
-            <Text style={styles.label}>Nombre del Cliente *</Text><TextInput style={styles.input} value={formData.clientName} onChangeText={(text) => setFormData({ ...formData, clientName: text })} placeholder="Nombre completo" />
-            <Text style={styles.label}>Prioridad</Text><View style={styles.priorityButtons}>{['baja', 'media', 'alta', 'critica'].map((priority) => (<TouchableOpacity key={priority} style={[styles.priorityButton, formData.priority === priority && styles.priorityButtonActive]} onPress={() => setFormData({ ...formData, priority })}><Text style={[styles.priorityButtonText, formData.priority === priority && styles.priorityButtonTextActive]}>{priority}</Text></TouchableOpacity>))}</View>
-            <View style={styles.modalActions}><TouchableOpacity style={[styles.button, styles.buttonCancel]} onPress={() => setModalVisible(false)}><Text style={styles.buttonCancelText}>Cancelar</Text></TouchableOpacity><TouchableOpacity style={[styles.button, styles.buttonSubmit]} onPress={handleSubmit}><Text style={styles.buttonSubmitText}>Crear</Text></TouchableOpacity></View>
-          </ScrollView></View></View>
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCloseModal}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editingComplaint ? 'Editar Reclamo' : 'Nuevo Reclamo'}</Text>
+              <TouchableOpacity onPress={handleCloseModal}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalForm}>
+              <Text style={styles.label}>Título *</Text>
+              <TextInput 
+                style={styles.input} 
+                value={formData.title} 
+                onChangeText={(text) => setFormData({ ...formData, title: text })} 
+                placeholder="Título del reclamo" 
+              />
+              
+              <Text style={styles.label}>Descripción *</Text>
+              <TextInput 
+                style={[styles.input, styles.textArea]} 
+                value={formData.description} 
+                onChangeText={(text) => setFormData({ ...formData, description: text })} 
+                placeholder="Descripción detallada" 
+                multiline 
+                numberOfLines={4} 
+              />
+              
+              <Text style={styles.label}>Nombre del Cliente *</Text>
+              <TextInput 
+                style={styles.input} 
+                value={formData.clientName} 
+                onChangeText={(text) => setFormData({ ...formData, clientName: text })} 
+                placeholder="Nombre completo" 
+              />
+
+              <Text style={styles.label}>Institución</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.institution}
+                  onValueChange={(value) => setFormData({ ...formData, institution: value })}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Ninguna" value="" />
+                  {institutions.map((inst) => (
+                    <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Compartir con</Text>
+              <ScrollView style={styles.sharedWithContainer}>
+                {contacts.length === 0 ? (
+                  <Text style={styles.noContactsText}>No hay contactos registrados</Text>
+                ) : (
+                  contacts.map((contact) => (
+                    <TouchableOpacity
+                      key={contact.userId}
+                      style={styles.contactItem}
+                      onPress={() => toggleUserSelection(contact.userId)}
+                    >
+                      <View style={styles.checkbox}>
+                        {selectedUsers.includes(contact.userId) && (
+                          <Ionicons name="checkmark" size={18} color="#3b82f6" />
+                        )}
+                      </View>
+                      <Text style={styles.userName}>{contact.name}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+              
+              <Text style={styles.label}>Prioridad</Text>
+              <View style={styles.priorityButtons}>
+                {['baja', 'media', 'alta', 'critica'].map((priority) => (
+                  <TouchableOpacity 
+                    key={priority} 
+                    style={[styles.priorityButton, formData.priority === priority && styles.priorityButtonActive]} 
+                    onPress={() => setFormData({ ...formData, priority })}
+                  >
+                    <Text style={[styles.priorityButtonText, formData.priority === priority && styles.priorityButtonTextActive]}>
+                      {priority}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.buttonCancel]} 
+                  onPress={handleCloseModal}
+                >
+                  <Text style={styles.buttonCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                {editingComplaint && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.buttonDelete]} 
+                    onPress={() => handleDelete(editingComplaint._id)}
+                  >
+                    <Text style={styles.buttonDeleteText}>Eliminar</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  style={[styles.button, styles.buttonSubmit]} 
+                  onPress={handleSubmit}
+                >
+                  <Text style={styles.buttonSubmitText}>{editingComplaint ? 'Actualizar' : 'Crear'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -217,10 +495,83 @@ const styles = StyleSheet.create({
   priorityButtonActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
   priorityButtonText: { fontSize: 12, color: '#6b7280', textTransform: 'capitalize' },
   priorityButtonTextActive: { color: '#fff', fontWeight: '600' },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
   button: { flex: 1, padding: 16, borderRadius: 8, alignItems: 'center' },
   buttonCancel: { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#d1d5db' },
   buttonCancelText: { fontSize: 16, fontWeight: '600', color: '#374151' },
   buttonSubmit: { backgroundColor: '#3b82f6' },
   buttonSubmitText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  buttonDelete: { backgroundColor: '#ef4444' },
+  buttonDeleteText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  filterButtonActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  filterTextActive: {
+    color: '#fff',
+  },
+  pickerContainer: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  picker: {
+    height: 50,
+  },
+  sharedWithContainer: {
+    maxHeight: 150,
+    marginBottom: 16,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userName: {
+    fontSize: 15,
+    color: '#1f2937',
+  },
+  noContactsText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
 });

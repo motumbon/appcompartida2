@@ -21,6 +21,7 @@ export default function ActivitiesScreen() {
   const [viewMode, setViewMode] = useState('list'); // 'list', 'pending', 'completed', 'calendar'
   const [filterUser, setFilterUser] = useState('all'); // 'all', 'mine', or userId
   const [filterInstitution, setFilterInstitution] = useState('all'); // 'all' or institutionId
+  const [selectedDate, setSelectedDate] = useState(null); // Para el calendario
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -139,6 +140,30 @@ export default function ActivitiesScreen() {
     }
   };
 
+  const handleDelete = (id) => {
+    Alert.alert(
+      'Eliminar Actividad',
+      '¿Estás seguro de eliminar esta actividad?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await activitiesAPI.delete(id);
+              handleCloseModal();
+              loadActivities();
+              Alert.alert('Éxito', 'Actividad eliminada');
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleStatusChange = async (activity, newStatus) => {
     try {
       await activitiesAPI.update(activity._id, { status: newStatus });
@@ -232,11 +257,35 @@ export default function ActivitiesScreen() {
         });
       }
     });
+    // Marcar día seleccionado
+    if (selectedDate) {
+      if (!marked[selectedDate]) {
+        marked[selectedDate] = {};
+      }
+      marked[selectedDate].selected = true;
+      marked[selectedDate].selectedColor = '#3b82f6';
+    }
     return marked;
   };
 
   const handleDayPress = (day) => {
-    setFormData({ ...formData, scheduledDate: day.dateString, scheduledTime: '09:00' });
+    setSelectedDate(day.dateString);
+    // No abrir modal automáticamente, solo seleccionar la fecha
+  };
+
+  const getActivitiesForSelectedDate = () => {
+    if (!selectedDate) return [];
+    return filteredActivities.filter(activity => {
+      if (!activity.scheduledDate) return false;
+      const activityDate = activity.scheduledDate.split('T')[0];
+      return activityDate === selectedDate;
+    });
+  };
+
+  const openNewActivityFromCalendar = () => {
+    if (selectedDate) {
+      setFormData({ ...formData, scheduledDate: selectedDate, scheduledTime: '09:00' });
+    }
     setModalVisible(true);
   };
 
@@ -391,9 +440,10 @@ export default function ActivitiesScreen() {
           </View>
 
           <View style={styles.calendarActivitiesList}>
-            <Text style={styles.calendarListTitle}>Actividades programadas</Text>
-            {filteredActivities
-              .filter(a => a.scheduledDate)
+            <Text style={styles.calendarListTitle}>
+              {selectedDate ? `Actividades del ${new Date(selectedDate).toLocaleDateString('es')}` : 'Actividades programadas'}
+            </Text>
+            {(selectedDate ? getActivitiesForSelectedDate() : filteredActivities.filter(a => a.scheduledDate))
               .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
               .map((activity) => (
                 <TouchableOpacity
@@ -425,10 +475,12 @@ export default function ActivitiesScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-            {filteredActivities.filter(a => a.scheduledDate).length === 0 && (
+            {(selectedDate ? getActivitiesForSelectedDate() : filteredActivities.filter(a => a.scheduledDate)).length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
-                <Text style={styles.emptyText}>No hay actividades programadas</Text>
+                <Text style={styles.emptyText}>
+                  {selectedDate ? 'No hay actividades para esta fecha' : 'No hay actividades programadas'}
+                </Text>
               </View>
             )}
           </View>
@@ -453,7 +505,10 @@ export default function ActivitiesScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={viewMode === 'calendar' ? openNewActivityFromCalendar : () => setModalVisible(true)}
+      >
         <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
 
@@ -551,11 +606,19 @@ export default function ActivitiesScreen() {
                 >
                   <Text style={styles.buttonCancelText}>Cancelar</Text>
                 </TouchableOpacity>
+                {editingActivity && (
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonDelete]}
+                    onPress={() => handleDelete(editingActivity._id)}
+                  >
+                    <Text style={styles.buttonDeleteText}>Eliminar</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[styles.button, styles.buttonSubmit]}
                   onPress={handleSubmit}
                 >
-                  <Text style={styles.buttonSubmitText}>Crear</Text>
+                  <Text style={styles.buttonSubmitText}>{editingActivity ? 'Actualizar' : 'Crear'}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -935,6 +998,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
   },
   buttonSubmitText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  buttonDelete: {
+    backgroundColor: '#ef4444',
+  },
+  buttonDeleteText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',

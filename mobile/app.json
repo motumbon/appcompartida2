@@ -2,7 +2,7 @@
   "expo": {
     "name": "App Trabajo en Terreno",
     "slug": "app-trabajo-terreno-mobile",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "INTERNET"
       ]

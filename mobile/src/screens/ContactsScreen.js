@@ -29,6 +29,8 @@ export default function ContactsScreen() {
     phone: '',
     notes: ''
   });
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     loadContacts();
@@ -163,6 +165,36 @@ export default function ContactsScreen() {
     setModalVisible(false);
     setEditingContact(null);
     setFormData({ name: '', email: '', phone: '', notes: '' });
+    setUserSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const searchUsers = async (query) => {
+    if (query.length < 2) {
+      setUserSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await usersAPI.autocomplete(query);
+      setUserSuggestions(response.data || []);
+      setShowSuggestions(response.data && response.data.length > 0);
+    } catch (error) {
+      console.error('Error buscando usuarios:', error);
+      setUserSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectUser = (user) => {
+    setFormData({
+      ...formData,
+      name: user.username,
+      email: user.email
+    });
+    setShowSuggestions(false);
+    setUserSuggestions([]);
   };
 
   const renderContact = ({ item }) => (
@@ -262,12 +294,34 @@ export default function ContactsScreen() {
 
             <ScrollView style={styles.modalForm}>
               <Text style={styles.label}>Nombre *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.name}
-                onChangeText={(text) => setFormData({ ...formData, name: text })}
-                placeholder="Nombre completo"
-              />
+              <View>
+                <TextInput
+                  style={styles.input}
+                  value={formData.name}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, name: text });
+                    searchUsers(text);
+                  }}
+                  placeholder="Nombre completo"
+                />
+                {showSuggestions && userSuggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    {userSuggestions.map((user) => (
+                      <TouchableOpacity
+                        key={user._id}
+                        style={styles.suggestionItem}
+                        onPress={() => selectUser(user)}
+                      >
+                        <Ionicons name="person-circle" size={24} color="#3b82f6" />
+                        <View style={styles.suggestionInfo}>
+                          <Text style={styles.suggestionName}>{user.username}</Text>
+                          <Text style={styles.suggestionEmail}>{user.email}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
 
               <Text style={styles.label}>Email *</Text>
               <TextInput
@@ -555,7 +609,7 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 24
+    marginTop: 20
   },
   button: {
     flex: 1,
@@ -608,5 +662,43 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1f2937',
     fontWeight: '500',
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    maxHeight: 200,
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  suggestionInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  suggestionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  suggestionEmail: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
   },
 });
