@@ -140,6 +140,32 @@ export default function NotesScreen() {
     return months;
   };
 
+  const getAvailableInstitutions = () => {
+    const institutionIds = new Set();
+    
+    allNotes.forEach(note => {
+      if (note.institution) {
+        institutionIds.add(note.institution._id);
+      }
+    });
+    
+    return institutions.filter(inst => institutionIds.has(inst._id));
+  };
+
+  const getAvailableSharedUsers = () => {
+    const userIds = new Set();
+    
+    allNotes.forEach(note => {
+      if (note.sharedWith && note.sharedWith.length > 0) {
+        note.sharedWith.forEach(user => {
+          userIds.add(user._id);
+        });
+      }
+    });
+    
+    return contacts.filter(contact => userIds.has(contact.userId));
+  };
+
   const handleSubmit = async () => {
     if (!formData.subject || !formData.comment) {
       Alert.alert('Error', 'Asunto y comentario son requeridos');
@@ -496,61 +522,73 @@ export default function NotesScreen() {
 
               {/* Filtro por Institución */}
               <Text style={styles.label}>Institución</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                <TouchableOpacity
-                  style={[styles.filterChip, !filters.institution && styles.filterChipSelected]}
-                  onPress={() => setFilters({ ...filters, institution: null })}
-                >
-                  <Text style={[styles.filterChipText, !filters.institution && styles.filterChipTextSelected]}>
-                    Todas
-                  </Text>
-                </TouchableOpacity>
-                {institutions.map((inst) => (
+              {getAvailableInstitutions().length === 0 ? (
+                <Text style={styles.noOptionsText}>
+                  No hay notas con instituciones asignadas
+                </Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
                   <TouchableOpacity
-                    key={inst._id}
-                    style={[styles.filterChip, filters.institution === inst._id && styles.filterChipSelected]}
-                    onPress={() => setFilters({ ...filters, institution: inst._id })}
+                    style={[styles.filterChip, !filters.institution && styles.filterChipSelected]}
+                    onPress={() => setFilters({ ...filters, institution: null })}
                   >
-                    <Ionicons 
-                      name="business" 
-                      size={14} 
-                      color={filters.institution === inst._id ? "#fff" : "#6b7280"} 
-                    />
-                    <Text style={[styles.filterChipText, filters.institution === inst._id && styles.filterChipTextSelected]}>
-                      {inst.name}
+                    <Text style={[styles.filterChipText, !filters.institution && styles.filterChipTextSelected]}>
+                      Todas
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                  {getAvailableInstitutions().map((inst) => (
+                    <TouchableOpacity
+                      key={inst._id}
+                      style={[styles.filterChip, filters.institution === inst._id && styles.filterChipSelected]}
+                      onPress={() => setFilters({ ...filters, institution: inst._id })}
+                    >
+                      <Ionicons 
+                        name="business" 
+                        size={14} 
+                        color={filters.institution === inst._id ? "#fff" : "#6b7280"} 
+                      />
+                      <Text style={[styles.filterChipText, filters.institution === inst._id && styles.filterChipTextSelected]}>
+                        {inst.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
 
               {/* Filtro por Usuario Compartido */}
               <Text style={styles.label}>Compartido con</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                <TouchableOpacity
-                  style={[styles.filterChip, !filters.sharedUser && styles.filterChipSelected]}
-                  onPress={() => setFilters({ ...filters, sharedUser: null })}
-                >
-                  <Text style={[styles.filterChipText, !filters.sharedUser && styles.filterChipTextSelected]}>
-                    Todos
-                  </Text>
-                </TouchableOpacity>
-                {contacts.map((contact) => (
+              {getAvailableSharedUsers().length === 0 ? (
+                <Text style={styles.noOptionsText}>
+                  No hay notas compartidas con usuarios
+                </Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
                   <TouchableOpacity
-                    key={contact._id}
-                    style={[styles.filterChip, filters.sharedUser === contact.userId && styles.filterChipSelected]}
-                    onPress={() => setFilters({ ...filters, sharedUser: contact.userId })}
+                    style={[styles.filterChip, !filters.sharedUser && styles.filterChipSelected]}
+                    onPress={() => setFilters({ ...filters, sharedUser: null })}
                   >
-                    <Ionicons 
-                      name="person" 
-                      size={14} 
-                      color={filters.sharedUser === contact.userId ? "#fff" : "#6b7280"} 
-                    />
-                    <Text style={[styles.filterChipText, filters.sharedUser === contact.userId && styles.filterChipTextSelected]}>
-                      {contact.name}
+                    <Text style={[styles.filterChipText, !filters.sharedUser && styles.filterChipTextSelected]}>
+                      Todos
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                  {getAvailableSharedUsers().map((contact) => (
+                    <TouchableOpacity
+                      key={contact._id}
+                      style={[styles.filterChip, filters.sharedUser === contact.userId && styles.filterChipSelected]}
+                      onPress={() => setFilters({ ...filters, sharedUser: contact.userId })}
+                    >
+                      <Ionicons 
+                        name="person" 
+                        size={14} 
+                        color={filters.sharedUser === contact.userId ? "#fff" : "#6b7280"} 
+                      />
+                      <Text style={[styles.filterChipText, filters.sharedUser === contact.userId && styles.filterChipTextSelected]}>
+                        {contact.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -922,5 +960,12 @@ const styles = StyleSheet.create({
   },
   filterChipTextSelected: {
     color: '#fff'
+  },
+  noOptionsText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    marginBottom: 16,
+    paddingVertical: 12
   }
 });
