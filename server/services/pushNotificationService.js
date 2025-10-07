@@ -1,5 +1,5 @@
-const axios = require('axios');
-const PushToken = require('../models/PushToken');
+import axios from 'axios';
+import PushToken from '../models/PushToken.js';
 
 class PushNotificationService {
   constructor() {
@@ -164,4 +164,4 @@ class PushNotificationService {
   }
 }
 
-module.exports = new PushNotificationService();
+export default new PushNotificationService();

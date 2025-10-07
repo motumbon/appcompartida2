@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import PushToken from '../models/PushToken.js';
+import { authenticateToken } from '../middleware/auth.js';
+
 const router = express.Router();
-const PushToken = require('../models/PushToken');
-const { authenticateToken } = require('../middleware/auth');
 
 // Registrar o actualizar token de push
 router.post('/register', authenticateToken, async (req, res) => {
@@ -49,4 +50,4 @@ router.delete('/unregister', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

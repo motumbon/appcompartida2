@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const pushTokenSchema = new mongoose.Schema({
   user: {
@@ -22,4 +22,4 @@ const pushTokenSchema = new mongoose.Schema({
 
 pushTokenSchema.index({ user: 1 });
 
-module.exports = mongoose.model('PushToken', pushTokenSchema);
+export default mongoose.model('PushToken', pushTokenSchema);

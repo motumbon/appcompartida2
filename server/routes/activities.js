@@ -2,10 +2,10 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
-const Activity = require('../models/Activity');
-const { authenticateToken } = require('../middleware/auth');
-const upload = require('../middleware/upload');
-const pushNotificationService = require('../services/pushNotificationService');
+import Activity from '../models/Activity.js';
+import { authenticateToken } from '../middleware/auth.js';
+import upload from '../middleware/upload.js';
+import pushNotificationService from '../services/pushNotificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
