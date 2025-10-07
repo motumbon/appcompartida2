@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 16,
+      "versionCode": 17,
       "permissions": [
         "INTERNET",
         "POST_NOTIFICATIONS"
