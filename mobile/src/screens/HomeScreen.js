@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -6,6 +6,7 @@ import { Calendar } from 'react-native-calendars';
 import { useAuth } from '../contexts/AuthContext';
 import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI } from '../config/api';
 import { useNavigation } from '@react-navigation/native';
+import notificationService from '../services/notificationService';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
@@ -19,21 +20,56 @@ export default function HomeScreen() {
   const [allTasks, setAllTasks] = useState([]);
   const [todayActivities, setTodayActivities] = useState([]);
   const [pendingTasks, setPendingTasks] = useState([]);
+  const previousDataRef = useRef({ activities: [], tasks: [], complaints: [] });
 
   useEffect(() => {
-    loadDismissedNotifications();
-    loadStats();
-    loadNotifications();
+    const initializeData = async () => {
+      const dismissed = await loadDismissedNotifications();
+      await loadStats();
+      await loadNotifications(dismissed);
+      
+      // Inicializar servicio de notificaciones
+      await notificationService.registerForPushNotifications();
+      
+      // Configurar listeners
+      notificationService.setupNotificationListeners(
+        (notification) => {
+          console.log('Notificación recibida:', notification);
+        },
+        (response) => {
+          // Manejar cuando el usuario toca la notificación
+          const data = response.notification.request.content.data;
+          if (data.type === 'activity') {
+            navigation.navigate('Actividades');
+          } else if (data.type === 'task') {
+            navigation.navigate('Tareas');
+          } else if (data.type === 'contracts') {
+            navigation.navigate('Contratos');
+          } else if (data.type === 'stock') {
+            navigation.navigate('Stock');
+          }
+        }
+      );
+    };
+    initializeData();
+
+    return () => {
+      notificationService.removeNotificationListeners();
+    };
   }, []);
 
   const loadDismissedNotifications = async () => {
     try {
       const dismissed = await SecureStore.getItemAsync('dismissedNotifications');
       if (dismissed) {
-        setDismissedNotifications(JSON.parse(dismissed));
+        const parsedDismissed = JSON.parse(dismissed);
+        setDismissedNotifications(parsedDismissed);
+        return parsedDismissed;
       }
+      return [];
     } catch (error) {
       console.error('Error loading dismissed notifications:', error);
+      return [];
     }
   };
 
@@ -81,8 +117,11 @@ export default function HomeScreen() {
     }
   };
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (dismissedList = null) => {
     try {
+      // Usar la lista proporcionada o la del estado
+      const dismissed = dismissedList !== null ? dismissedList : dismissedNotifications;
+      
       const notifs = [];
       
       // Actividades compartidas conmigo
@@ -91,6 +130,16 @@ export default function HomeScreen() {
         activity.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
         activity.createdBy?._id !== user?._id
       );
+      
+      // Detectar nuevas actividades y enviar notificación push
+      const newActivities = sharedActivities.filter(a => 
+        !previousDataRef.current.activities.some(prev => prev._id === a._id)
+      );
+      newActivities.forEach(activity => {
+        notificationService.notifySharedActivity(activity, activity.createdBy?.username || 'Alguien');
+      });
+      previousDataRef.current.activities = sharedActivities;
+      
       sharedActivities.slice(0, 3).forEach(activity => {
         notifs.push({
           id: `activity-${activity._id}`,
@@ -109,6 +158,16 @@ export default function HomeScreen() {
         task.sharedWith?.some(u => u._id === user?._id || u === user?._id) &&
         task.createdBy?._id !== user?._id
       );
+      
+      // Detectar nuevas tareas y enviar notificación push
+      const newTasks = sharedTasks.filter(t => 
+        !previousDataRef.current.tasks.some(prev => prev._id === t._id)
+      );
+      newTasks.forEach(task => {
+        notificationService.notifySharedTask(task, task.createdBy?.username || 'Alguien');
+      });
+      previousDataRef.current.tasks = sharedTasks;
+      
       sharedTasks.slice(0, 3).forEach(task => {
         notifs.push({
           id: `task-${task._id}`,
@@ -181,7 +240,7 @@ export default function HomeScreen() {
 
       // Ordenar por fecha más reciente y filtrar desestimadas
       notifs.sort((a, b) => new Date(b.time) - new Date(a.time));
-      const filtered = notifs.filter(n => !dismissedNotifications.includes(n.id));
+      const filtered = notifs.filter(n => !dismissed.includes(n.id));
       setNotifications(filtered.slice(0, 5)); // Máximo 5 notificaciones
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -191,7 +250,7 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadStats();
-    await loadNotifications();
+    await loadNotifications(dismissedNotifications);
     setRefreshing(false);
   };
 

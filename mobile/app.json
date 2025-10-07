@@ -18,10 +18,12 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 15,
+      "versionCode": 16,
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "POST_NOTIFICATIONS"
       ],
+      "useNextNotificationsApi": true,
       "intentFilters": [
         {
           "action": "VIEW",
