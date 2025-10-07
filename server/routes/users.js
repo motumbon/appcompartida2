@@ -181,16 +181,26 @@ router.get('/autocomplete', authenticateToken, async (req, res) => {
 router.post('/institutions/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Vinculando institución (URL):', id, 'Usuario:', req.user._id);
     
     const user = await User.findById(req.user._id);
     
-    if (!user.institutions.includes(id)) {
-      user.institutions.push(id);
-      await user.save();
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
     }
     
+    if (!user.institutions.includes(id)) {
+      user.institutions.push(id);
+      // Usar findByIdAndUpdate para evitar trigger del hook de password
+      await User.findByIdAndUpdate(req.user._id, {
+        $addToSet: { institutions: id }
+      });
+    }
+    
+    console.log('✅ Institución vinculada exitosamente');
     res.json({ message: 'Institución vinculada exitosamente' });
   } catch (error) {
+    console.error('❌ Error al vincular institución:', error);
     res.status(500).json({ message: 'Error al vincular institución', error: error.message });
   }
 });
@@ -199,16 +209,27 @@ router.post('/institutions/:id', authenticateToken, async (req, res) => {
 router.post('/institutions/link', authenticateToken, async (req, res) => {
   try {
     const { institutionId } = req.body;
+    console.log('Vinculando institución (body):', institutionId, 'Usuario:', req.user._id);
+    
+    if (!institutionId) {
+      return res.status(400).json({ message: 'institutionId es requerido' });
+    }
     
     const user = await User.findById(req.user._id);
     
-    if (!user.institutions.includes(institutionId)) {
-      user.institutions.push(institutionId);
-      await user.save();
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
     }
     
+    // Usar findByIdAndUpdate para evitar trigger del hook de password
+    await User.findByIdAndUpdate(req.user._id, {
+      $addToSet: { institutions: institutionId }
+    });
+    
+    console.log('✅ Institución vinculada exitosamente');
     res.json({ message: 'Institución vinculada exitosamente' });
   } catch (error) {
+    console.error('❌ Error al vincular institución:', error);
     res.status(500).json({ message: 'Error al vincular institución', error: error.message });
   }
 });

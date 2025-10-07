@@ -53,28 +53,36 @@ export default function ContactsScreen() {
   const loadInstitutions = async () => {
     try {
       const response = await institutionsAPI.getAll();
+      console.log('📋 Instituciones totales:', response.data.length, response.data);
       setInstitutions(response.data);
     } catch (error) {
-      console.error('Error al cargar instituciones:', error);
+      console.error('❌ Error al cargar instituciones:', error);
+      Alert.alert('Error', 'No se pudieron cargar las instituciones');
     }
   };
 
   const loadUserInstitutions = async () => {
     try {
       const response = await usersAPI.getUserInstitutions();
+      console.log('👤 Instituciones del usuario:', response.data.length, response.data);
       setUserInstitutions(response.data);
     } catch (error) {
-      console.error('Error al cargar instituciones del usuario:', error);
+      console.error('❌ Error al cargar instituciones del usuario:', error);
+      Alert.alert('Error', 'No se pudieron cargar tus instituciones');
     }
   };
 
   const handleLinkInstitution = async (institutionId) => {
     try {
+      console.log('🔗 Vinculando institución:', institutionId);
       await usersAPI.linkInstitution(institutionId);
+      console.log('✅ Institución vinculada exitosamente');
       Alert.alert('Éxito', 'Institución vinculada');
-      loadUserInstitutions();
+      await loadUserInstitutions();
+      await loadInstitutions();
     } catch (error) {
-      Alert.alert('Error', 'No se pudo vincular la institución');
+      console.error('❌ Error al vincular institución:', error);
+      Alert.alert('Error', 'No se pudo vincular la institución: ' + (error.response?.data?.message || error.message));
     }
   };
 
