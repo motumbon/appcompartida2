@@ -123,9 +123,13 @@ export const stockAPI = {
 };
 
 export const notesAPI = {
+  getAll: () => api.get('/notes'),
   getNotes: () => api.get('/notes'),
+  create: (data) => api.post('/notes', data),
   createNote: (data) => api.post('/notes', data),
+  update: (id, data) => api.put(`/notes/${id}`, data),
   updateNote: (id, data) => api.put(`/notes/${id}`, data),
+  delete: (id) => api.delete(`/notes/${id}`),
   deleteNote: (id) => api.delete(`/notes/${id}`)
 };
 

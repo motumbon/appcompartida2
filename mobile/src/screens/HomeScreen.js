@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Calendar } from 'react-native-calendars';
 import { useAuth } from '../contexts/AuthContext';
-import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI } from '../config/api';
+import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI, notesAPI } from '../config/api';
 import { useNavigation } from '@react-navigation/native';
 import notificationService from '../services/notificationService';
 
@@ -336,7 +336,6 @@ export default function HomeScreen() {
 
       // Notas compartidas conmigo (NUEVO)
       try {
-        const notesAPI = require('../config/api').notesAPI;
         const notesRes = await notesAPI.getAll();
         const sharedNotes = notesRes.data.filter(note => {
           if (!note.sharedWith || note.sharedWith.length === 0) return false;
