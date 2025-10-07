@@ -177,7 +177,25 @@ router.get('/autocomplete', authenticateToken, async (req, res) => {
   }
 });
 
-// Vincular institución a usuario
+// Vincular institución a usuario (con ID en URL - RESTful)
+router.post('/institutions/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    
+    if (!user.institutions.includes(id)) {
+      user.institutions.push(id);
+      await user.save();
+    }
+    
+    res.json({ message: 'Institución vinculada exitosamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al vincular institución', error: error.message });
+  }
+});
+
+// Vincular institución a usuario (ruta legacy - con ID en body)
 router.post('/institutions/link', authenticateToken, async (req, res) => {
   try {
     const { institutionId } = req.body;
