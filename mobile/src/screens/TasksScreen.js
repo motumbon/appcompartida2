@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { tasksAPI, contactsAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function TasksScreen() {
+export default function TasksScreen({ route }) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -29,6 +29,27 @@ export default function TasksScreen() {
     loadTasks();
     loadContacts();
   }, []);
+
+  // Manejar parámetros de navegación
+  useEffect(() => {
+    if (route?.params) {
+      const { openModal, editTask } = route.params;
+      
+      if (openModal) {
+        // Abrir modal para crear nueva tarea
+        handleAddTask();
+        // Limpiar parámetro
+        route.params.openModal = undefined;
+      }
+      
+      if (editTask) {
+        // Abrir modal para editar tarea existente
+        handleEditTask(editTask);
+        // Limpiar parámetro
+        route.params.editTask = undefined;
+      }
+    }
+  }, [route?.params]);
 
   const loadTasks = async () => {
     try {

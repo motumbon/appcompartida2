@@ -6,7 +6,7 @@ import { Calendar } from 'react-native-calendars';
 import { activitiesAPI, contactsAPI, usersAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function ActivitiesScreen() {
+export default function ActivitiesScreen({ route }) {
   const { user } = useAuth();
   const [activities, setActivities] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -46,6 +46,34 @@ export default function ActivitiesScreen() {
     loadContacts();
     loadInstitutions();
   }, []);
+
+  // Manejar parámetros de navegación
+  useEffect(() => {
+    if (route?.params) {
+      const { openModal, editActivity, date } = route.params;
+      
+      if (openModal) {
+        // Abrir modal para crear nueva actividad
+        handleAddActivity();
+        if (date) {
+          // Pre-configurar fecha
+          const [year, month, day] = date.split('-');
+          setDateYear(year);
+          setDateMonth(month);
+          setDateDay(day);
+        }
+        // Limpiar parámetro
+        route.params.openModal = undefined;
+      }
+      
+      if (editActivity) {
+        // Abrir modal para editar actividad existente
+        handleEditActivity(editActivity);
+        // Limpiar parámetro
+        route.params.editActivity = undefined;
+      }
+    }
+  }, [route?.params]);
 
   const loadActivities = async () => {
     try {

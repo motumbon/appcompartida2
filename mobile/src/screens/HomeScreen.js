@@ -266,12 +266,34 @@ export default function HomeScreen() {
 
   // Navegar a crear actividad
   const createNewActivity = () => {
-    navigation.navigate('Activities', { openModal: true, date: selectedDate });
+    navigation.navigate('Activities', { 
+      screen: 'ActivitiesList',
+      params: { openModal: true, date: selectedDate } 
+    });
+  };
+
+  // Navegar a editar actividad
+  const editActivity = (activity) => {
+    navigation.navigate('Activities', {
+      screen: 'ActivitiesList',
+      params: { editActivity: activity }
+    });
   };
 
   // Navegar a crear tarea
   const createNewTask = () => {
-    navigation.navigate('Tasks', { openModal: true });
+    navigation.navigate('Tasks', {
+      screen: 'TasksList',
+      params: { openModal: true }
+    });
+  };
+
+  // Navegar a editar tarea
+  const editTask = (task) => {
+    navigation.navigate('Tasks', {
+      screen: 'TasksList',
+      params: { editTask: task }
+    });
   };
 
   return (
@@ -293,25 +315,25 @@ export default function HomeScreen() {
 
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-          <Ionicons name="calendar" size={32} color="#fff" />
+          <Ionicons name="calendar" size={20} color="#fff" />
           <Text style={styles.statNumber}>{stats.activities}</Text>
           <Text style={styles.statLabel}>Actividades</Text>
         </View>
 
         <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
-          <Ionicons name="checkmark-circle" size={32} color="#fff" />
+          <Ionicons name="checkmark-circle" size={20} color="#fff" />
           <Text style={styles.statNumber}>{stats.tasks}</Text>
-          <Text style={styles.statLabel}>Tareas Pendientes</Text>
+          <Text style={styles.statLabel}>Tareas</Text>
         </View>
 
         <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-          <Ionicons name="alert-circle" size={32} color="#fff" />
+          <Ionicons name="alert-circle" size={20} color="#fff" />
           <Text style={styles.statNumber}>{stats.complaints}</Text>
-          <Text style={styles.statLabel}>Reclamos Activos</Text>
+          <Text style={styles.statLabel}>Reclamos</Text>
         </View>
 
         <View style={[styles.statCard, { backgroundColor: '#6366f1' }]}>
-          <Ionicons name="document-text" size={32} color="#fff" />
+          <Ionicons name="document-text" size={20} color="#fff" />
           <Text style={styles.statNumber}>{stats.contracts}</Text>
           <Text style={styles.statLabel}>Contratos</Text>
         </View>
@@ -357,7 +379,7 @@ export default function HomeScreen() {
                 <TouchableOpacity 
                   key={activity._id} 
                   style={styles.activityItem}
-                  onPress={() => navigation.navigate('Activities')}
+                  onPress={() => editActivity(activity)}
                 >
                   <View style={styles.activityTime}>
                     <Ionicons name="time" size={16} color="#6b7280" />
@@ -390,7 +412,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={task._id}
               style={styles.taskItem}
-              onPress={() => navigation.navigate('Tasks')}
+              onPress={() => editTask(task)}
             >
               <TouchableOpacity
                 style={styles.checkbox}
@@ -489,25 +511,24 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     padding: 8,
     justifyContent: 'space-between',
   },
   statCard: {
-    width: '48%',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
+    flex: 1,
+    padding: 8,
+    borderRadius: 10,
+    marginHorizontal: 3,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginVertical: 6,
+    marginVertical: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 9,
     color: '#fff',
     textAlign: 'center',
   },
