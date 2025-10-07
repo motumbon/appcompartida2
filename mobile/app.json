@@ -19,11 +19,6 @@
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
       "versionCode": 14,
-      "icon": "./assets/icon.png",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#3b82f6"
-      },
       "permissions": [
         "INTERNET"
       ],
