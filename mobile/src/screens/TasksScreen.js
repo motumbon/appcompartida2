@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { tasksAPI, contactsAPI } from '../config/api';
+import { tasksAPI, contactsAPI, institutionsAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function TasksScreen({ route }) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -20,7 +21,8 @@ export default function TasksScreen({ route }) {
     status: 'pendiente',
     dueDate: '',
     checklist: [],
-    sharedWith: []
+    sharedWith: [],
+    institution: null
   });
   const [newCheckItem, setNewCheckItem] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -28,6 +30,7 @@ export default function TasksScreen({ route }) {
   useEffect(() => {
     loadTasks();
     loadContacts();
+    loadInstitutions();
   }, []);
 
   // Manejar parámetros de navegación
@@ -69,6 +72,15 @@ export default function TasksScreen({ route }) {
     }
   };
 
+  const loadInstitutions = async () => {
+    try {
+      const response = await institutionsAPI.getAll();
+      setInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones:', error);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadTasks();
@@ -106,7 +118,7 @@ export default function TasksScreen({ route }) {
     setEditingTask(null);
     setNewCheckItem('');
     setSelectedUsers([]);
-    setFormData({ title: '', description: '', priority: 'media', status: 'pendiente', dueDate: '', checklist: [], sharedWith: [] });
+    setFormData({ title: '', description: '', priority: 'media', status: 'pendiente', dueDate: '', checklist: [], sharedWith: [], institution: null });
   };
 
   const handleEdit = (task) => {
@@ -118,7 +130,8 @@ export default function TasksScreen({ route }) {
       status: task.status,
       dueDate: task.dueDate || '',
       checklist: task.checklist || [],
-      sharedWith: task.sharedWith?.map(u => u._id) || []
+      sharedWith: task.sharedWith?.map(u => u._id) || [],
+      institution: task.institution?._id || null
     });
     setSelectedUsers(task.sharedWith?.map(u => u._id) || []);
     setModalVisible(true);
@@ -440,6 +453,34 @@ export default function TasksScreen({ route }) {
                 ))}
               </View>
 
+              <Text style={styles.label}>Institución</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.institutionScroll}>
+                <TouchableOpacity
+                  style={[styles.institutionChip, !formData.institution && styles.institutionChipSelected]}
+                  onPress={() => setFormData({ ...formData, institution: null })}
+                >
+                  <Text style={[styles.institutionChipText, !formData.institution && styles.institutionChipTextSelected]}>
+                    Sin institución
+                  </Text>
+                </TouchableOpacity>
+                {institutions.map((inst) => (
+                  <TouchableOpacity
+                    key={inst._id}
+                    style={[styles.institutionChip, formData.institution === inst._id && styles.institutionChipSelected]}
+                    onPress={() => setFormData({ ...formData, institution: inst._id })}
+                  >
+                    <Ionicons 
+                      name="business" 
+                      size={14} 
+                      color={formData.institution === inst._id ? "#fff" : "#6b7280"} 
+                    />
+                    <Text style={[styles.institutionChipText, formData.institution === inst._id && styles.institutionChipTextSelected]}>
+                      {inst.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
               <Text style={styles.label}>Compartir con</Text>
               <ScrollView style={styles.sharedWithContainer}>
                 {contacts.length === 0 ? (
@@ -745,5 +786,32 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  institutionScroll: {
+    marginBottom: 16,
+  },
+  institutionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    marginRight: 8,
+  },
+  institutionChipSelected: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  institutionChipText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  institutionChipTextSelected: {
+    color: '#fff',
   },
 });

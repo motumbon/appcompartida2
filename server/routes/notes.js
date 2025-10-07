@@ -16,6 +16,7 @@ router.get('/', authenticateToken, async (req, res) => {
     })
       .populate('createdBy', 'username email')
       .populate('sharedWith', 'username email')
+      .populate('institution', 'name')
       .sort({ createdAt: -1 });
     
     res.json(notes);
@@ -27,17 +28,19 @@ router.get('/', authenticateToken, async (req, res) => {
 // Crear nueva nota
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { subject, comment, sharedWith } = req.body;
+    const { subject, comment, sharedWith, institution } = req.body;
 
     const note = new Note({
       subject,
       comment,
       createdBy: req.user._id,
-      sharedWith: sharedWith || []
+      sharedWith: sharedWith || [],
+      institution: institution || null
     });
 
     await note.save();
     await note.populate('sharedWith', 'username email');
+    await note.populate('institution', 'name');
 
     res.status(201).json(note);
   } catch (error) {
@@ -48,7 +51,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Actualizar nota
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const { subject, comment, sharedWith } = req.body;
+    const { subject, comment, sharedWith, institution } = req.body;
 
     // Buscar nota donde el usuario es creador O está en sharedWith
     const note = await Note.findOne({
@@ -66,11 +69,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
     note.subject = subject;
     note.comment = comment;
     note.sharedWith = sharedWith || [];
+    note.institution = institution || null;
     note.updatedAt = Date.now();
 
     await note.save();
     await note.populate('createdBy', 'username email');
     await note.populate('sharedWith', 'username email');
+    await note.populate('institution', 'name');
 
     res.json(note);
   } catch (error) {

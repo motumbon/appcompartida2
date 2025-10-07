@@ -15,6 +15,10 @@ const noteSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  institution: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Institution'
+  },
   sharedWith: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
