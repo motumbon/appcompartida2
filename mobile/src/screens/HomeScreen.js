@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { activitiesAPI, tasksAPI, complaintsAPI, contractsAPI, stockAPI, notesAPI } from '../config/api';
 import { useNavigation } from '@react-navigation/native';
 import notificationService from '../services/notificationService';
+import pollingService from '../services/pollingService';
 import { useResponsive } from '../hooks/useResponsive';
 
 export default function HomeScreen() {
@@ -38,8 +39,8 @@ export default function HomeScreen() {
       // Marcar que ya no es la primera carga
       setIsFirstLoad(false);
       
-      // Inicializar servicio de notificaciones
-      await notificationService.registerForPushNotifications();
+      // Iniciar polling de notificaciones (el registro de push token ahora está en AuthContext)
+      await pollingService.startForegroundPolling();
       
       // Configurar listeners
       notificationService.setupNotificationListeners(
@@ -67,6 +68,7 @@ export default function HomeScreen() {
 
     return () => {
       notificationService.removeNotificationListeners();
+      pollingService.stopForegroundPolling();
     };
   }, []);
 
@@ -399,6 +401,11 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    
+    // Verificar notificaciones nuevas manualmente
+    console.log('🔄 Pull-to-refresh: verificando notificaciones...');
+    await pollingService.checkForUpdates();
+    
     await loadStats();
     await loadNotifications(dismissedNotifications);
     setRefreshing(false);
@@ -510,12 +517,14 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={[styles.header, isTablet && styles.headerTablet]}>
-        <Text style={[styles.greeting, isTablet && styles.greetingTablet]}>¡Hola, {user?.username}!</Text>
-        {user?.isAdmin && (
-          <View style={styles.adminBadge}>
-            <Text style={[styles.adminText, isTablet && styles.adminTextTablet]}>Administrador</Text>
-          </View>
-        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.greeting, isTablet && styles.greetingTablet]}>¡Hola, {user?.username}!</Text>
+          {user?.isAdmin && (
+            <View style={styles.adminBadge}>
+              <Text style={[styles.adminText, isTablet && styles.adminTextTablet]}>Administrador</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Ionicons name="log-out-outline" size={isTablet ? 28 : 24} color="#ef4444" />
         </TouchableOpacity>

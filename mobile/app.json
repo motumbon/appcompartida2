@@ -2,7 +2,7 @@
   "expo": {
     "name": "App Trabajo en Terreno",
     "slug": "app-trabajo-terreno-mobile",
-    "version": "1.4.7",
+    "version": "1.7.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,12 +18,16 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 18,
+      "versionCode": 27,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "INTERNET",
         "POST_NOTIFICATIONS"
       ],
-      "useNextNotificationsApi": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#3b82f6"
+      },
       "intentFilters": [
         {
           "action": "VIEW",
@@ -39,6 +43,23 @@
       "eas": {
         "projectId": "00a515c1-6a8f-4c94-9637-f2ca52cf16ca"
       }
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#3b82f6",
+          "mode": "production"
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#3b82f6",
+      "androidMode": "default",
+      "androidCollapsedTitle": "App Trabajo en Terreno"
     }
   }
 }
