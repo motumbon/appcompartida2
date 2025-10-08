@@ -1,9 +1,10 @@
-import axios from 'axios';
+import { Expo } from 'expo-server-sdk';
 import PushToken from '../models/PushToken.js';
 
 class PushNotificationService {
   constructor() {
-    this.expo_push_url = 'https://exp.host/--/api/v2/push/send';
+    // Crear instancia de Expo SDK
+    this.expo = new Expo();
   }
 
   /**
@@ -23,9 +24,9 @@ class PushNotificationService {
         return { success: false, message: 'No tokens found' };
       }
 
-      // Filtrar solo tokens válidos de Expo (que empiecen con "ExponentPushToken")
+      // Filtrar solo tokens válidos usando la validación oficial de Expo
       const validTokens = pushTokens.filter(pt => 
-        pt.token && pt.token.startsWith('ExponentPushToken[')
+        pt.token && Expo.isExpoPushToken(pt.token)
       );
 
       if (validTokens.length === 0) {
@@ -38,44 +39,54 @@ class PushNotificationService {
       console.log(`📤 Enviando notificación a ${validTokens.length} dispositivo(s) con tokens válidos`);
 
       // Preparar mensajes para Expo Push Notifications
-      const messages = validTokens.map(pt => ({
-        to: pt.token,
-        sound: 'default',
-        title: notification.title,
-        body: notification.body,
-        data: notification.data || {},
-        priority: 'high',
-        channelId: 'default'
-      }));
+      const messages = [];
+      for (const pt of validTokens) {
+        // Verificar que el token sea válido antes de agregarlo
+        if (!Expo.isExpoPushToken(pt.token)) {
+          console.error(`Token inválido: ${pt.token}`);
+          continue;
+        }
 
-      // Enviar notificaciones en lotes
-      const results = await this.sendBatch(messages);
+        messages.push({
+          to: pt.token,
+          sound: 'default',
+          title: notification.title,
+          body: notification.body,
+          data: notification.data || {},
+          priority: 'high',
+          channelId: 'default'
+        });
+      }
+
+      // Dividir mensajes en chunks (Expo limita a 100 por request)
+      const chunks = this.expo.chunkPushNotifications(messages);
+      const tickets = [];
+
+      console.log(`📦 Enviando ${messages.length} mensajes en ${chunks.length} chunk(s)`);
+
+      // Enviar cada chunk
+      for (const chunk of chunks) {
+        try {
+          const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
+          tickets.push(...ticketChunk);
+          console.log(`✅ Chunk enviado: ${ticketChunk.length} tickets recibidos`);
+        } catch (error) {
+          console.error('❌ Error enviando chunk:', error);
+        }
+      }
+
+      // Verificar si hubo errores en los tickets
+      const errors = tickets.filter(ticket => ticket.status === 'error');
+      if (errors.length > 0) {
+        console.warn(`⚠️ ${errors.length} notificaciones fallaron:`, errors);
+      }
+
+      console.log(`✅ Notificaciones enviadas exitosamente: ${tickets.length - errors.length}/${tickets.length}`);
       
-      console.log(`✅ Notificaciones enviadas. Resultados:`, results);
-      
-      return { success: true, results };
+      return { success: true, tickets, errors: errors.length };
     } catch (error) {
       console.error('❌ Error enviando notificaciones push:', error);
       return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Enviar lote de notificaciones a Expo
-   */
-  async sendBatch(messages) {
-    try {
-      const response = await axios.post(this.expo_push_url, messages, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Error llamando a Expo Push API:', error.response?.data || error.message);
-      throw error;
     }
   }
 
