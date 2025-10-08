@@ -1,6 +1,7 @@
 import express from 'express';
 import Task from '../models/Task.js';
 import { authenticateToken } from '../middleware/auth.js';
+import pushNotificationService from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -59,6 +60,19 @@ router.post('/', authenticateToken, async (req, res) => {
     await task.save();
     await task.populate(['createdBy', 'sharedWith', 'institution']);
 
+    // Enviar notificaciones push inmediatamente si se compartió
+    if (task.sharedWith && task.sharedWith.length > 0) {
+      const sharedUserIds = task.sharedWith
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (sharedUserIds.length > 0) {
+        console.log(`✅ Enviando notificación inmediata: tarea "${task.title}" compartida con ${sharedUserIds.length} usuario(s)`);
+        pushNotificationService.notifySharedTask(task, sharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
+
     res.status(201).json({ message: 'Tarea creada exitosamente', task });
   } catch (error) {
     res.status(500).json({ message: 'Error al crear tarea', error: error.message });
@@ -82,6 +96,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: 'Tarea no encontrada' });
     }
+
+    // Guardar sharedWith anterior para detectar nuevos shares
+    const previousSharedWith = task.sharedWith.map(u => u.toString());
 
     // Creador o usuarios compartidos pueden editar
     const isCreator = task.createdBy.toString() === req.user._id.toString();
@@ -109,6 +126,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await task.save();
     await task.populate(['createdBy', 'sharedWith', 'institution']);
+
+    // Detectar nuevos usuarios compartidos y enviar notificaciones
+    if (isCreator) {
+      const newSharedUserIds = task.sharedWith
+        .filter(u => !previousSharedWith.includes(u._id.toString()))
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (newSharedUserIds.length > 0) {
+        console.log(`✅ Enviando notificación inmediata: tarea "${task.title}" compartida con ${newSharedUserIds.length} nuevo(s) usuario(s)`);
+        pushNotificationService.notifySharedTask(task, newSharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
 
     res.json({ message: 'Tarea actualizada exitosamente', task });
   } catch (error) {

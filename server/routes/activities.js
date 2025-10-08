@@ -87,6 +87,19 @@ router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
     await activity.save();
     await activity.populate(['createdBy', 'sharedWith', 'institution']);
 
+    // Enviar notificaciones push inmediatamente si se compartió
+    if (activity.sharedWith && activity.sharedWith.length > 0) {
+      const sharedUserIds = activity.sharedWith
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (sharedUserIds.length > 0) {
+        console.log(`📅 Enviando notificación inmediata: actividad "${activity.subject}" compartida con ${sharedUserIds.length} usuario(s)`);
+        pushNotificationService.notifySharedActivity(activity, sharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
+
     res.status(201).json({ message: 'Actividad creada exitosamente', activity });
   } catch (error) {
     res.status(500).json({ message: 'Error al crear actividad', error: error.message });
@@ -150,6 +163,9 @@ router.put('/:id', authenticateToken, uploadActivityFiles, async (req, res) => {
       return res.status(404).json({ message: 'Actividad no encontrada' });
     }
 
+    // Guardar sharedWith anterior para detectar nuevos shares
+    const previousSharedWith = activity.sharedWith.map(u => u.toString());
+
     // Solo el creador puede editar ciertos campos
     if (activity.createdBy.toString() === req.user._id.toString()) {
       activity.subject = subject || activity.subject;
@@ -196,6 +212,20 @@ router.put('/:id', authenticateToken, uploadActivityFiles, async (req, res) => {
 
     await activity.save();
     await activity.populate(['createdBy', 'sharedWith', 'institution']);
+
+    // Detectar nuevos usuarios compartidos y enviar notificaciones
+    if (activity.createdBy.toString() === req.user._id.toString()) {
+      const newSharedUserIds = activity.sharedWith
+        .filter(u => !previousSharedWith.includes(u._id.toString()))
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (newSharedUserIds.length > 0) {
+        console.log(`📅 Enviando notificación inmediata: actividad "${activity.subject}" compartida con ${newSharedUserIds.length} nuevo(s) usuario(s)`);
+        pushNotificationService.notifySharedActivity(activity, newSharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
 
     res.json({ message: 'Actividad actualizada exitosamente', activity });
   } catch (error) {

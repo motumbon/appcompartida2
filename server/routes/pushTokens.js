@@ -50,4 +50,29 @@ router.delete('/unregister', authenticateToken, async (req, res) => {
   }
 });
 
+// Ver todos los tokens (debug)
+router.get('/list', authenticateToken, async (req, res) => {
+  try {
+    const tokens = await PushToken.find().populate('user', 'username email');
+    
+    const tokenInfo = tokens.map(t => ({
+      username: t.user?.username || 'Unknown',
+      token: t.token,
+      isValid: t.token?.startsWith('ExponentPushToken['),
+      deviceInfo: t.deviceInfo,
+      lastUpdated: t.lastUpdated
+    }));
+    
+    res.json({
+      total: tokens.length,
+      validTokens: tokens.filter(t => t.token?.startsWith('ExponentPushToken[')).length,
+      localTokens: tokens.filter(t => !t.token?.startsWith('ExponentPushToken[')).length,
+      tokens: tokenInfo
+    });
+  } catch (error) {
+    console.error('Error obteniendo tokens:', error);
+    res.status(500).json({ message: 'Error obteniendo tokens', error: error.message });
+  }
+});
+
 export default router;

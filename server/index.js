@@ -20,9 +20,14 @@ import complaintsRoutes from './routes/complaints.js';
 import contractsRoutes from './routes/contracts.js';
 import stockRoutes from './routes/stock.js';
 import notesRoutes from './routes/notes.js';
+import pushTokensRoutes from './routes/pushTokens.js';
+import testNotificationsRoutes from './routes/testNotifications.js';
 
 // Importar modelos
 import User from './models/User.js';
+
+// Importar servicios
+import notificationMonitor from './services/notificationMonitor.js';
 
 dotenv.config();
 
@@ -138,6 +143,8 @@ app.use('/api/complaints', complaintsRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/push-tokens', pushTokensRoutes);
+app.use('/api/test-notifications', testNotificationsRoutes);
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {
@@ -183,14 +190,24 @@ app.use((err, req, res, next) => {
 // Iniciar servidor
 connectDB().then(() => {
   const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
     console.log(`📍 HOST: ${HOST}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     if (process.env.NODE_ENV === 'production') {
       console.log(`✅ Escuchando en todas las interfaces de red (0.0.0.0:${PORT})`);
     }
+    
+    // Iniciar monitoreo de notificaciones push
+    notificationMonitor.start();
   });
+  
+  // Aumentar timeout para uploads de archivos grandes (5 minutos)
+  server.timeout = 300000; // 5 minutos en milisegundos
+  server.keepAliveTimeout = 65000; // 65 segundos
+  server.headersTimeout = 66000; // 66 segundos
+  
+  console.log('⏱️ Timeouts configurados: request=300s, keepAlive=65s');
 });
 
 export default app;

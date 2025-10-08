@@ -19,12 +19,26 @@ class PushNotificationService {
       });
 
       if (pushTokens.length === 0) {
-        console.log('No hay tokens registrados para estos usuarios');
+        console.log('⚠️ No hay tokens registrados para estos usuarios');
         return { success: false, message: 'No tokens found' };
       }
 
+      // Filtrar solo tokens válidos de Expo (que empiecen con "ExponentPushToken")
+      const validTokens = pushTokens.filter(pt => 
+        pt.token && pt.token.startsWith('ExponentPushToken[')
+      );
+
+      if (validTokens.length === 0) {
+        console.log('⚠️ No hay tokens válidos de Expo Push. Tokens encontrados:', 
+          pushTokens.map(pt => pt.token.substring(0, 20) + '...').join(', ')
+        );
+        return { success: false, message: 'No valid Expo tokens' };
+      }
+
+      console.log(`📤 Enviando notificación a ${validTokens.length} dispositivo(s) con tokens válidos`);
+
       // Preparar mensajes para Expo Push Notifications
-      const messages = pushTokens.map(pt => ({
+      const messages = validTokens.map(pt => ({
         to: pt.token,
         sound: 'default',
         title: notification.title,
@@ -37,9 +51,11 @@ class PushNotificationService {
       // Enviar notificaciones en lotes
       const results = await this.sendBatch(messages);
       
+      console.log(`✅ Notificaciones enviadas. Resultados:`, results);
+      
       return { success: true, results };
     } catch (error) {
-      console.error('Error enviando notificaciones push:', error);
+      console.error('❌ Error enviando notificaciones push:', error);
       return { success: false, error: error.message };
     }
   }

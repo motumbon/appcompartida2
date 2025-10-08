@@ -56,10 +56,15 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // Subir archivo Excel con contratos
 router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  const startTime = Date.now();
+  console.log(`📄 Iniciando upload de contratos - Archivo: ${req.file?.originalname || 'N/A'}, Tamaño: ${(req.file?.size / 1024 / 1024).toFixed(2)}MB`);
+  
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No se proporcionó ningún archivo' });
     }
+    
+    console.log(`⏱️ [${Date.now() - startTime}ms] Archivo recibido, procesando...`);
 
     // Eliminar índice antiguo si existe
     try {
@@ -72,7 +77,9 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       }
     }
 
+    console.log(`⏱️ [${Date.now() - startTime}ms] Leyendo Excel...`);
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    console.log(`⏱️ [${Date.now() - startTime}ms] Excel leído, ${workbook.SheetNames.length} hojas`);
     
     // Buscar la hoja "DDBB"
     let sheetName = workbook.SheetNames.find(name => 
@@ -86,7 +93,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       });
     }
     
-    console.log('Leyendo hoja:', sheetName);
+    console.log(`⏱️ [${Date.now() - startTime}ms] Leyendo hoja: ${sheetName}`);
     console.log('Hojas disponibles:', workbook.SheetNames);
     
     const sheet = workbook.Sheets[sheetName];
@@ -196,7 +203,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       };
     });
 
-    console.log('Items mapeados:', items.length);
+    console.log(`⏱️ [${Date.now() - startTime}ms] Items mapeados: ${items.length}`);
     if (items.length > 0) {
       console.log('Primer item mapeado:', items[0]);
     }
@@ -211,8 +218,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       return item.cliente || item.nomCliente || item.numPedido || item.kamRepr;
     });
 
-    console.log('Items después de filtrar:', filteredItems.length);
-    console.log('Items excluidos (ZKE1 y vacíos):', items.length - filteredItems.length);
+    console.log(`⏱️ [${Date.now() - startTime}ms] Items filtrados: ${filteredItems.length} (excluidos: ${items.length - filteredItems.length})`);
 
     if (filteredItems.length === 0) {
       return res.status(400).json({ 
@@ -222,7 +228,9 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     }
 
     // Eliminar contratos anteriores
+    console.log(`⏱️ [${Date.now() - startTime}ms] Eliminando contratos anteriores...`);
     await Contract.deleteMany({});
+    console.log(`⏱️ [${Date.now() - startTime}ms] Contratos anteriores eliminados`);
 
     // Dividir items en chunks para evitar límite de 16MB de MongoDB
     const CHUNK_SIZE = 1000; // 1000 items por chunk
@@ -231,7 +239,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
       chunks.push(filteredItems.slice(i, i + CHUNK_SIZE));
     }
 
-    console.log(`Dividiendo ${filteredItems.length} items en ${chunks.length} chunks`);
+    console.log(`⏱️ [${Date.now() - startTime}ms] Dividiendo ${filteredItems.length} items en ${chunks.length} chunks`);
 
     // Crear un batchId único para este upload
     const batchId = `${Date.now()}-${req.user._id}`;
@@ -250,13 +258,16 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
 
       await chunk.save();
       savedChunks.push(chunk);
-      console.log(`Chunk ${i + 1}/${chunks.length} guardado con ${chunks[i].length} items`);
+      console.log(`⏱️ [${Date.now() - startTime}ms] Chunk ${i + 1}/${chunks.length} guardado con ${chunks[i].length} items`);
     }
 
-    console.log('Todos los contratos guardados exitosamente');
+    console.log(`⏱️ [${Date.now() - startTime}ms] Todos los contratos guardados exitosamente`);
 
     // Poblar el primer chunk para la respuesta
     await savedChunks[0].populate('uploadedBy', 'username email name');
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ Upload completado en ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
 
     res.status(201).json({ 
       message: 'Contratos actualizados exitosamente', 
@@ -265,11 +276,30 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
         uploadedBy: savedChunks[0].uploadedBy,
         uploadedAt: savedChunks[0].uploadedAt,
         fileName: savedChunks[0].fileName
+      },
+      stats: {
+        totalItems: filteredItems.length,
+        processingTime: `${(totalTime/1000).toFixed(2)}s`,
+        chunks: chunks.length
       }
     });
   } catch (error) {
-    console.error('Error al procesar archivo:', error);
-    res.status(500).json({ message: 'Error al procesar el archivo Excel', error: error.message });
+    const totalTime = Date.now() - startTime;
+    console.error(`❌ Error al procesar archivo (tiempo: ${totalTime}ms):`, error.message);
+    console.error('Stack trace:', error.stack);
+    
+    // Error más específico para el cliente
+    const errorMessage = error.message.includes('size') 
+      ? 'El archivo es demasiado grande. Intenta con un archivo más pequeño o contacta al administrador.'
+      : error.message.includes('timeout')
+      ? 'El procesamiento tardó demasiado. Intenta con un archivo más pequeño.'
+      : `Error al procesar el archivo Excel: ${error.message}`;
+    
+    res.status(500).json({ 
+      message: errorMessage,
+      error: error.message,
+      processingTime: `${(totalTime/1000).toFixed(2)}s`
+    });
   }
 });
 

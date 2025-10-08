@@ -1,6 +1,7 @@
 import express from 'express';
 import Note from '../models/Note.js';
 import { authenticateToken } from '../middleware/auth.js';
+import pushNotificationService from '../services/pushNotificationService.js';
 
 const router = express.Router();
 
@@ -39,8 +40,22 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     await note.save();
+    await note.populate('createdBy', 'username email');
     await note.populate('sharedWith', 'username email');
     await note.populate('institution', 'name');
+
+    // Enviar notificaciones push inmediatamente si se compartió
+    if (note.sharedWith && note.sharedWith.length > 0) {
+      const sharedUserIds = note.sharedWith
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (sharedUserIds.length > 0) {
+        console.log(`📝 Enviando notificación inmediata: nota "${note.subject}" compartida con ${sharedUserIds.length} usuario(s)`);
+        pushNotificationService.notifySharedNote(note, sharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
 
     res.status(201).json(note);
   } catch (error) {
@@ -66,6 +81,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Nota no encontrada o sin permisos' });
     }
 
+    // Guardar sharedWith anterior para detectar nuevos shares
+    const previousSharedWith = note.sharedWith.map(u => u.toString());
+    const isCreator = note.createdBy.toString() === req.user._id.toString();
+
     note.subject = subject;
     note.comment = comment;
     note.sharedWith = sharedWith || [];
@@ -76,6 +95,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
     await note.populate('createdBy', 'username email');
     await note.populate('sharedWith', 'username email');
     await note.populate('institution', 'name');
+
+    // Detectar nuevos usuarios compartidos y enviar notificaciones
+    if (isCreator) {
+      const newSharedUserIds = note.sharedWith
+        .filter(u => !previousSharedWith.includes(u._id.toString()))
+        .filter(u => u._id.toString() !== req.user._id.toString())
+        .map(u => u._id);
+      
+      if (newSharedUserIds.length > 0) {
+        console.log(`📝 Enviando notificación inmediata: nota "${note.subject}" compartida con ${newSharedUserIds.length} nuevo(s) usuario(s)`);
+        pushNotificationService.notifySharedNote(note, newSharedUserIds)
+          .catch(err => console.error('Error enviando notificación:', err));
+      }
+    }
 
     res.json(note);
   } catch (error) {
