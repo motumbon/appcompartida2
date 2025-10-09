@@ -1,45 +1,12 @@
-import admin from 'firebase-admin';
 import { Expo } from 'expo-server-sdk';
 import PushToken from '../models/PushToken.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 class PushNotificationService {
   constructor() {
-    this.expo = new Expo();
-    this.initializeFirebase();
-  }
-
-  initializeFirebase() {
-    try {
-      // Verificar si Firebase ya está inicializado
-      if (!admin.apps.length) {
-        let serviceAccount;
-        
-        // Intentar cargar desde variable de entorno primero (Railway)
-        if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-          console.log('📝 Cargando Service Account desde variable de entorno...');
-          serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-        } else {
-          // Fallback: cargar desde archivo (desarrollo local)
-          console.log('📝 Cargando Service Account desde archivo local...');
-          const serviceAccountPath = join(__dirname, '../firebase-service-account.json');
-          serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-        }
-        
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-        
-        console.log('✅ Firebase Admin SDK inicializado correctamente');
-      }
-    } catch (error) {
-      console.warn('⚠️ Firebase Admin SDK no disponible, usando solo Expo SDK:', error.message);
-    }
+    this.expo = new Expo({
+      accessToken: process.env.EXPO_ACCESS_TOKEN,
+    });
+    console.log('✅ Expo Push Notification Service inicializado');
   }
 
   /**
@@ -73,47 +40,51 @@ class PushNotificationService {
 
       console.log(`📤 Enviando notificación a ${validTokens.length} dispositivo(s) con tokens válidos`);
 
-      // Preparar mensajes para FCM usando Firebase Admin SDK
-      const messages = validTokens.map(pt => ({
-        token: pt.token,
-        notification: {
+      // Preparar mensajes para Expo Push Notifications
+      const messages = [];
+      for (const pt of validTokens) {
+        if (!Expo.isExpoPushToken(pt.token)) {
+          console.error(`Token inválido: ${pt.token}`);
+          continue;
+        }
+
+        messages.push({
+          to: pt.token,
+          sound: 'default',
           title: notification.title,
-          body: notification.body
-        },
-        data: notification.data || {},
-        android: {
+          body: notification.body,
+          data: notification.data || {},
           priority: 'high',
-          notification: {
-            sound: 'default',
-            channelId: 'default'
-          }
-        }
-      }));
+          channelId: 'default'
+        });
+      }
 
-      console.log(`📦 Enviando ${messages.length} mensajes via Firebase Admin SDK`);
+      // Dividir mensajes en chunks (Expo limita a 100 por request)
+      const chunks = this.expo.chunkPushNotifications(messages);
+      const tickets = [];
 
-      // Enviar usando Firebase Admin SDK
-      const results = [];
-      for (const message of messages) {
+      console.log(`📦 Enviando ${messages.length} mensajes en ${chunks.length} chunk(s) via Expo Push Service`);
+
+      // Enviar cada chunk
+      for (const chunk of chunks) {
         try {
-          const response = await admin.messaging().send(message);
-          results.push({ success: true, messageId: response });
-          console.log(`✅ Mensaje enviado: ${response}`);
+          const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
+          tickets.push(...ticketChunk);
+          console.log(`✅ Chunk enviado: ${ticketChunk.length} tickets recibidos`);
         } catch (error) {
-          console.error(`❌ Error enviando mensaje:`, error.message);
-          results.push({ success: false, error: error.message });
+          console.error('❌ Error enviando chunk:', error);
         }
       }
 
-      const successCount = results.filter(r => r.success).length;
-      const errorCount = results.filter(r => !r.success).length;
-
-      console.log(`✅ Notificaciones enviadas exitosamente: ${successCount}/${messages.length}`);
-      if (errorCount > 0) {
-        console.warn(`⚠️ ${errorCount} notificaciones fallaron`);
+      // Verificar si hubo errores en los tickets
+      const errors = tickets.filter(ticket => ticket.status === 'error');
+      if (errors.length > 0) {
+        console.warn(`⚠️ ${errors.length} notificaciones fallaron:`, errors);
       }
+
+      console.log(`✅ Notificaciones enviadas exitosamente: ${tickets.length - errors.length}/${tickets.length}`);
       
-      return { success: true, results, successCount, errorCount };
+      return { success: true, tickets, errors: errors.length };
     } catch (error) {
       console.error('❌ Error enviando notificaciones push:', error);
       return { success: false, error: error.message };

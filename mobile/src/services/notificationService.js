@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 // Configurar cómo se manejan las notificaciones cuando la app está en primer plano
 Notifications.setNotificationHandler({
@@ -15,62 +15,163 @@ class NotificationService {
   constructor() {
     this.notificationListener = null;
     this.responseListener = null;
+    this.channelCreated = false;
   }
 
   // Registrar el dispositivo para notificaciones
   async registerForPushNotifications() {
-    let token;
+    let token = null;
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#3b82f6',
-        sound: 'default',
-      });
-    }
+    try {
+      // Crear canal de notificaciones para Android
+      if (Platform.OS === 'android') {
+        console.log('🔔 Creando canal de notificaciones para Android...');
+        
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Notificaciones Generales',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#3b82f6',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        });
 
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        // Canal de alta prioridad
+        await Notifications.setNotificationChannelAsync('high_priority', {
+          name: 'Notificaciones Importantes',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 500, 250, 500],
+          lightColor: '#ef4444',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        });
+
+        this.channelCreated = true;
+        console.log('✅ Canales de notificaciones creados correctamente');
       }
-      
-      if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
-        return null;
+
+      if (Device.isDevice) {
+        // Verificar permisos existentes
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        
+        console.log('📱 Estado de permisos actual:', existingStatus);
+        
+        // Solicitar permisos si no están otorgados
+        if (existingStatus !== 'granted') {
+          console.log('⚠️ Solicitando permisos de notificación...');
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+          console.log('📱 Nuevo estado de permisos:', finalStatus);
+        }
+        
+        if (finalStatus !== 'granted') {
+          console.error('❌ Permisos de notificación denegados');
+          Alert.alert(
+            'Permisos Requeridos',
+            'Esta app necesita permisos de notificación para funcionar correctamente. Por favor, habilítalos en la configuración.',
+            [{ text: 'OK' }]
+          );
+          return null;
+        }
+        
+        console.log('✅ Permisos de notificación otorgados');
+        
+        // Intentar obtener token de Expo Push Notifications
+        // Si falla (por falta de Firebase), usar un token local
+        try {
+          const tokenData = await Notifications.getExpoPushTokenAsync({
+            projectId: '00a515c1-6a8f-4c94-9637-f2ca52cf16ca'
+          });
+          token = tokenData.data;
+          console.log('🎫 Token de push obtenido:', token);
+          
+          // Registrar token en el backend
+          await this.registerTokenWithBackend(token);
+        } catch (tokenError) {
+          console.warn('⚠️ No se pudo obtener token de Expo (requiere Firebase)');
+          console.log('📲 Usando sistema de notificaciones locales con polling');
+          
+          // Generar un token único simple para este dispositivo
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(2, 15);
+          token = `local-device-${timestamp}-${random}`;
+          
+          console.log('🔑 Token local generado:', token);
+          
+          // Registrar token local en el backend
+          await this.registerTokenWithBackend(token);
+        }
+      } else {
+        console.warn('⚠️ Las notificaciones push requieren un dispositivo físico');
       }
-      
-      // Para notificaciones locales no necesitamos token de push
-      token = 'local-notifications';
-    } else {
-      console.log('Must use physical device for Push Notifications');
+    } catch (error) {
+      console.error('❌ Error al configurar notificaciones:', error);
+      Alert.alert('Error', 'No se pudieron configurar las notificaciones: ' + error.message);
     }
 
     return token;
   }
 
-  // Enviar notificación local
-  async sendLocalNotification(title, body, data = {}) {
+  // Registrar token en el backend
+  async registerTokenWithBackend(token) {
     try {
-      await Notifications.scheduleNotificationAsync({
+      const { pushTokensAPI } = await import('../config/api.js');
+      const deviceInfo = `${Device.brand} ${Device.modelName} - ${Platform.OS} ${Platform.Version}`;
+      
+      await pushTokensAPI.register({
+        token,
+        deviceInfo
+      });
+      
+      console.log('✅ Token registrado en el backend correctamente');
+    } catch (error) {
+      console.error('❌ Error registrando token en backend:', error);
+    }
+  }
+
+  // Enviar notificación local
+  async sendLocalNotification(title, body, data = {}, priority = 'default') {
+    try {
+      console.log('📤 Enviando notificación:', title);
+      
+      const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: title,
           body: body,
           data: data,
           sound: 'default',
-          priority: Notifications.AndroidNotificationPriority.HIGH,
+          priority: Notifications.AndroidNotificationPriority.MAX,
           vibrate: [0, 250, 250, 250],
+          badge: 1,
+          ...(Platform.OS === 'android' && {
+            channelId: priority === 'high' ? 'high_priority' : 'default',
+          }),
         },
         trigger: null, // null significa que se muestra inmediatamente
       });
+      
+      console.log('✅ Notificación enviada con ID:', notificationId);
+      return notificationId;
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('❌ Error enviando notificación:', error);
+      Alert.alert('Error', 'No se pudo enviar la notificación: ' + error.message);
+      return null;
     }
+  }
+  
+  // Método de prueba para verificar que las notificaciones funcionan
+  async sendTestNotification() {
+    return await this.sendLocalNotification(
+      '🧪 Notificación de Prueba',
+      'Si ves esto, las notificaciones están funcionando correctamente',
+      { type: 'test' },
+      'high'
+    );
   }
 
   // Notificación para actividad compartida

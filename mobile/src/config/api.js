@@ -147,4 +147,9 @@ export const institutionsAPI = {
   delete: (id) => api.delete(`/institutions/${id}`)
 };
 
+export const pushTokensAPI = {
+  register: (data) => api.post('/push-tokens/register', data),
+  unregister: () => api.delete('/push-tokens/unregister')
+};
+
 export default api;

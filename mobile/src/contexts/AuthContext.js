@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authAPI } from '../config/api';
+import notificationService from '../services/notificationService';
 
 const AuthContext = createContext(null);
 
@@ -20,6 +21,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
+  // Registrar para push notifications cuando el usuario está autenticado
+  useEffect(() => {
+    if (user && token) {
+      // Registrar push token al autenticarse
+      registerPushToken();
+    }
+  }, [user, token]);
+
+  const registerPushToken = async () => {
+    try {
+      console.log('🔔 Registrando token de notificaciones push...');
+      await notificationService.registerForPushNotifications();
+    } catch (error) {
+      console.error('Error registrando push token:', error);
+    }
+  };
 
   const loadStoredAuth = async () => {
     try {
@@ -93,6 +111,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // Desregistrar token de push antes de cerrar sesión
+    try {
+      const { pushTokensAPI } = await import('../config/api.js');
+      await pushTokensAPI.unregister();
+    } catch (error) {
+      console.error('Error desregistrando push token:', error);
+    }
+    
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('user');
     setToken(null);
