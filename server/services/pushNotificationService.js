@@ -3,10 +3,20 @@ import PushToken from '../models/PushToken.js';
 
 class PushNotificationService {
   constructor() {
-    this.expo = new Expo({
-      accessToken: process.env.EXPO_ACCESS_TOKEN,
-    });
+    // Configurar Expo con el access token si está disponible
+    const expoConfig = {};
+    if (process.env.EXPO_ACCESS_TOKEN) {
+      expoConfig.accessToken = process.env.EXPO_ACCESS_TOKEN;
+    }
+    
+    this.expo = new Expo(expoConfig);
+    
     console.log('✅ Expo Push Notification Service inicializado');
+    if (process.env.EXPO_FCM_SERVER_KEY) {
+      console.log('🔑 FCM Server Key configurado');
+    } else {
+      console.warn('⚠️ FCM Server Key NO configurado - las notificaciones Android pueden fallar');
+    }
   }
 
   /**
