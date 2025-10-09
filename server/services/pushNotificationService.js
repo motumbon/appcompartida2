@@ -18,8 +18,18 @@ class PushNotificationService {
     try {
       // Verificar si Firebase ya está inicializado
       if (!admin.apps.length) {
-        const serviceAccountPath = join(__dirname, '../firebase-service-account.json');
-        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+        let serviceAccount;
+        
+        // Intentar cargar desde variable de entorno primero (Railway)
+        if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+          console.log('📝 Cargando Service Account desde variable de entorno...');
+          serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        } else {
+          // Fallback: cargar desde archivo (desarrollo local)
+          console.log('📝 Cargando Service Account desde archivo local...');
+          const serviceAccountPath = join(__dirname, '../firebase-service-account.json');
+          serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+        }
         
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount)
