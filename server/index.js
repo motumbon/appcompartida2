@@ -199,7 +199,8 @@ connectDB().then(() => {
     }
     
     // Iniciar monitoreo de notificaciones push
-    notificationMonitor.start();
+    // DESACTIVADO: Las notificaciones inmediatas ya funcionan correctamente
+    // notificationMonitor.start();
   });
   
   // Aumentar timeout para uploads de archivos grandes (5 minutos)
