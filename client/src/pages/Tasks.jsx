@@ -274,6 +274,23 @@ const Tasks = () => {
     return Math.round((completed / checklist.length) * 100);
   };
 
+  // Calcular tiempo transcurrido desde la creación
+  const getTimeElapsed = (createdAt) => {
+    const now = moment();
+    const created = moment(createdAt);
+    const days = now.diff(created, 'days');
+    const hours = now.diff(created, 'hours') % 24;
+    return { days, hours };
+  };
+
+  // Obtener color según tiempo transcurrido
+  const getTimeElapsedColor = (days) => {
+    if (days <= 2) return 'bg-green-100 text-green-800 border-green-300';
+    if (days <= 15) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    if (days <= 30) return 'bg-orange-100 text-orange-800 border-orange-300';
+    return 'bg-red-100 text-red-800 border-red-300';
+  };
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -367,6 +384,15 @@ const Tasks = () => {
                         Compartida ({task.sharedWith.length})
                       </span>
                     )}
+                    {/* Contador de tiempo transcurrido */}
+                    {task.createdAt && (() => {
+                      const { days, hours } = getTimeElapsed(task.createdAt);
+                      return (
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${getTimeElapsedColor(days)}`}>
+                          🕒 {days}d {hours}h
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

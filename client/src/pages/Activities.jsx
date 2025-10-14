@@ -328,23 +328,6 @@ const Activities = () => {
     setEndPeriod('AM');
   };
 
-  // Calcular tiempo transcurrido desde la creación
-  const getTimeElapsed = (createdAt) => {
-    const now = moment();
-    const created = moment(createdAt);
-    const days = now.diff(created, 'days');
-    const hours = now.diff(created, 'hours') % 24;
-    return { days, hours };
-  };
-
-  // Obtener color según tiempo transcurrido
-  const getTimeElapsedColor = (days) => {
-    if (days <= 2) return 'bg-green-100 text-green-800 border-green-300';
-    if (days <= 15) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    if (days <= 30) return 'bg-orange-100 text-orange-800 border-orange-300';
-    return 'bg-red-100 text-red-800 border-red-300';
-  };
-
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + selectedFiles.length > 5) {
@@ -687,15 +670,6 @@ const Activities = () => {
                         En Calendario
                       </span>
                     )}
-                    {/* Contador de tiempo transcurrido */}
-                    {activity.createdAt && (() => {
-                      const { days, hours } = getTimeElapsed(activity.createdAt);
-                      return (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${getTimeElapsedColor(days)}`}>
-                          🕒 {days}d {hours}h
-                        </span>
-                      );
-                    })()}
                   </div>
                 </div>
                 <div className="flex gap-2">

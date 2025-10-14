@@ -214,6 +214,23 @@ const Complaints = () => {
 
   const filteredComplaints = filterStatus === 'all' ? complaints : complaints.filter(c => c.status === filterStatus);
 
+  // Calcular tiempo transcurrido desde la creación
+  const getTimeElapsed = (createdAt) => {
+    const now = moment();
+    const created = moment(createdAt);
+    const days = now.diff(created, 'days');
+    const hours = now.diff(created, 'hours') % 24;
+    return { days, hours };
+  };
+
+  // Obtener color según tiempo transcurrido
+  const getTimeElapsedColor = (days) => {
+    if (days <= 2) return 'bg-green-100 text-green-800 border-green-300';
+    if (days <= 15) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    if (days <= 30) return 'bg-orange-100 text-orange-800 border-orange-300';
+    return 'bg-red-100 text-red-800 border-red-300';
+  };
+
   return (
     <div>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -236,9 +253,18 @@ const Complaints = () => {
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
                 <h3 className="text-xl font-semibold mb-2">{complaint.title}</h3>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(complaint.status)}`}>{complaint.status.replace('_', ' ').toUpperCase()}</span>
                   <span className={`px-3 py-1 rounded-full text-sm ${getPriorityColor(complaint.priority)}`}>{complaint.priority.toUpperCase()}</span>
+                  {/* Contador de tiempo transcurrido */}
+                  {complaint.createdAt && (() => {
+                    const { days, hours } = getTimeElapsed(complaint.createdAt);
+                    return (
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${getTimeElapsedColor(days)}`}>
+                        🕒 {days}d {hours}h
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="flex gap-2">
