@@ -258,6 +258,60 @@ const Tasks = () => {
     return isCreator || sharedWithMe;
   };
 
+  // Obtener instituciones que tienen tareas
+  const getInstitutionsWithTasks = () => {
+    const institutionIds = new Set();
+    const institutionsMap = new Map();
+    
+    tasks.forEach(task => {
+      if (task.institution) {
+        const instId = task.institution._id || task.institution;
+        const instName = task.institution.name || userInstitutions.find(i => i._id === instId)?.name;
+        if (instId && instName) {
+          institutionIds.add(instId);
+          institutionsMap.set(instId, { _id: instId, name: instName });
+        }
+      }
+    });
+    
+    return Array.from(institutionsMap.values());
+  };
+
+  // Obtener usuarios con los que hay tareas compartidas
+  const getUsersWithSharedTasks = () => {
+    const userIds = new Set();
+    const usersMap = new Map();
+    const currentUserId = (user?._id || user?.id)?.toString();
+    
+    tasks.forEach(task => {
+      const creatorId = (task.createdBy?._id || task.createdBy)?.toString();
+      
+      // Si la tarea fue creada por otro usuario y compartida conmigo
+      if (creatorId !== currentUserId && task.sharedWith?.some(u => (u?._id || u)?.toString() === currentUserId)) {
+        const creator = task.createdBy;
+        const creatorName = creator.username || creator.name;
+        if (creatorId && creatorName) {
+          userIds.add(creatorId);
+          usersMap.set(creatorId, { _id: creatorId, name: creatorName });
+        }
+      }
+      
+      // Si la tarea fue creada por mí y compartida con otros
+      if (creatorId === currentUserId && task.sharedWith && task.sharedWith.length > 0) {
+        task.sharedWith.forEach(sharedUser => {
+          const sharedUserId = (sharedUser?._id || sharedUser)?.toString();
+          const sharedUserName = sharedUser.username || sharedUser.name;
+          if (sharedUserId && sharedUserId !== currentUserId && sharedUserName) {
+            userIds.add(sharedUserId);
+            usersMap.set(sharedUserId, { _id: sharedUserId, name: sharedUserName });
+          }
+        });
+      }
+    });
+    
+    return Array.from(usersMap.values());
+  };
+
   const filteredTasks = (() => {
     let filtered = tasks;
 
@@ -349,7 +403,7 @@ const Tasks = () => {
               className="input-sm text-sm w-full"
             >
               <option value="all">🏢 Todas las instituciones</option>
-              {userInstitutions.map((inst) => (
+              {getInstitutionsWithTasks().map((inst) => (
                 <option key={inst._id} value={inst._id}>
                   {inst.name}
                 </option>
@@ -364,13 +418,11 @@ const Tasks = () => {
               className="input-sm text-sm w-full"
             >
               <option value="all">👥 Todos los usuarios</option>
-              {contacts
-                .filter(contact => contact.userId && contact.userId._id)
-                .map((contact) => (
-                  <option key={contact.userId._id} value={contact.userId._id}>
-                    {contact.name}
-                  </option>
-                ))}
+              {getUsersWithSharedTasks().map((u) => (
+                <option key={u._id} value={u._id}>
+                  {u.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
