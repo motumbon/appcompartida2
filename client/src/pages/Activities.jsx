@@ -8,12 +8,19 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { activitiesAPI, contactsAPI, usersAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 
-moment.locale('es');
-moment.updateLocale('es', {
+// Configurar moment en español con lunes como primer día
+moment.locale('es', {
   week: {
-    dow: 1, // Lunes como primer día de la semana
+    dow: 1, // Lunes es el primer día de la semana
+    doy: 4  // La semana que contiene el 4 de enero es la primera semana del año
   },
+  months: 'enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre'.split('_'),
+  monthsShort: 'ene._feb._mar._abr._may._jun._jul._ago._sep._oct._nov._dic.'.split('_'),
+  weekdays: 'domingo_lunes_martes_miércoles_jueves_viernes_sábado'.split('_'),
+  weekdaysShort: 'dom._lun._mar._mié._jue._vie._sáb.'.split('_'),
+  weekdaysMin: 'Do_Lu_Ma_Mi_Ju_Vi_Sá'.split('_')
 });
+
 const localizer = momentLocalizer(moment);
 
 // Paleta de colores para actividades
@@ -407,11 +414,23 @@ const Activities = () => {
         const current = start.clone();
         
         while (current.isSameOrBefore(end, 'day')) {
+          // Usar la hora del día de inicio para todos los días del rango
+          const eventStart = current.clone()
+            .hours(start.hours())
+            .minutes(start.minutes())
+            .seconds(0)
+            .milliseconds(0);
+          const eventEnd = current.clone()
+            .hours(end.hours())
+            .minutes(end.minutes())
+            .seconds(0)
+            .milliseconds(0);
+          
           events.push({
             id: `${a._id}-${current.format('YYYY-MM-DD')}`,
             title: a.subject,
-            start: current.toDate(),
-            end: current.clone().endOf('day').toDate(),
+            start: eventStart.toDate(),
+            end: eventEnd.toDate(),
             resource: a,
             color: a.color || '#3b82f6'
           });
@@ -419,12 +438,13 @@ const Activities = () => {
         }
         return events;
       } else if (a.scheduledDate) {
-        // Evento de fecha única
+        // Evento de fecha única - usar moment para mantener la hora local
+        const eventMoment = moment(a.scheduledDate);
         return [{
           id: a._id,
           title: a.subject,
-          start: new Date(a.scheduledDate),
-          end: new Date(a.scheduledDate),
+          start: eventMoment.toDate(),
+          end: eventMoment.clone().add(1, 'hour').toDate(),
           resource: a,
           color: a.color || '#3b82f6'
         }];
@@ -775,6 +795,18 @@ const Activities = () => {
             onSelectSlot={handleSelectSlot}
             selectable
             eventPropGetter={eventStyleGetter}
+            formats={{
+              monthHeaderFormat: 'MMMM YYYY',
+              dayHeaderFormat: 'dddd DD MMMM',
+              dayRangeHeaderFormat: ({ start, end }) => 
+                `${moment(start).format('DD MMMM')} - ${moment(end).format('DD MMMM YYYY')}`,
+              agendaHeaderFormat: ({ start, end }) =>
+                `${moment(start).format('DD MMMM YYYY')} - ${moment(end).format('DD MMMM YYYY')}`,
+              agendaDateFormat: 'ddd DD MMM',
+              agendaTimeFormat: 'HH:mm',
+              agendaTimeRangeFormat: ({ start, end }) =>
+                `${moment(start).format('HH:mm')} - ${moment(end).format('HH:mm')}`
+            }}
             messages={{
               next: "Siguiente",
               previous: "Anterior",
@@ -866,29 +898,28 @@ const Activities = () => {
               <div>
                 <label className="label flex items-center gap-2">
                   <Palette size={16} />
-                  Color de la actividad
+                  Color
                 </label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="flex flex-wrap gap-2">
                   {ACTIVITY_COLORS.map((colorOption) => (
                     <button
                       key={colorOption.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, color: colorOption.value })}
-                      className={`h-10 rounded-lg border-2 transition-all ${
+                      className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${
                         formData.color === colorOption.value
-                          ? 'border-gray-800 scale-110 shadow-lg'
+                          ? 'border-gray-800 ring-2 ring-offset-2 ring-gray-400'
                           : 'border-gray-300 hover:border-gray-500'
                       }`}
                       style={{ backgroundColor: colorOption.value }}
                       title={colorOption.name}
                     >
                       {formData.color === colorOption.value && (
-                        <span className="text-white font-bold">✓</span>
+                        <span className="text-white font-bold text-xs">✓</span>
                       )}
                     </button>
                   ))}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Selecciona un color para identificar la actividad en el calendario</p>
               </div>
 
               <div>
