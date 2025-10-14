@@ -24,6 +24,8 @@ const Tasks = () => {
   });
   const [newCheckItem, setNewCheckItem] = useState('');
   const [loading, setLoading] = useState(false);
+  const [filterInstitution, setFilterInstitution] = useState('all');
+  const [filterUser, setFilterUser] = useState('all');
 
   useEffect(() => {
     loadTasks();
@@ -257,15 +259,44 @@ const Tasks = () => {
   };
 
   const filteredTasks = (() => {
+    let filtered = tasks;
+
+    // Filtro por modo de vista
     if (viewMode === 'pending') {
-      return tasks.filter(t => t.status === 'pendiente');
+      filtered = filtered.filter(t => t.status === 'pendiente');
     } else if (viewMode === 'completed') {
-      return tasks.filter(t => t.status === 'completada');
+      filtered = filtered.filter(t => t.status === 'completada');
     } else if (viewMode === 'assigned') {
-      // Solo tareas compartidas conmigo (no las que yo creé)
-      return tasks.filter(t => isSharedWithMe(t));
+      filtered = filtered.filter(t => isSharedWithMe(t));
     }
-    return tasks;
+
+    // Filtro por institución
+    if (filterInstitution !== 'all') {
+      filtered = filtered.filter(t => {
+        const taskInstitutionId = t.institution?._id || t.institution;
+        return taskInstitutionId === filterInstitution;
+      });
+    }
+
+    // Filtro por usuario compartido
+    if (filterUser !== 'all') {
+      filtered = filtered.filter(t => {
+        const creatorId = (t.createdBy?._id || t.createdBy)?.toString();
+        const currentUserId = (user?._id || user?.id)?.toString();
+        
+        // Tareas creadas por el usuario seleccionado y compartidas conmigo
+        const createdByUserAndSharedWithMe = creatorId === filterUser && 
+          t.sharedWith?.some(u => (u?._id || u)?.toString() === currentUserId);
+        
+        // Tareas creadas por mí y compartidas con el usuario seleccionado
+        const createdByMeAndSharedWithUser = creatorId === currentUserId && 
+          t.sharedWith?.some(u => (u?._id || u)?.toString() === filterUser);
+        
+        return createdByUserAndSharedWithMe || createdByMeAndSharedWithUser;
+      });
+    }
+
+    return filtered;
   })();
 
   const getChecklistProgress = (checklist) => {
@@ -305,6 +336,44 @@ const Tasks = () => {
           <Plus size={20} />
           Crear Tarea
         </button>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Filtrar por Institución</label>
+            <select
+              value={filterInstitution}
+              onChange={(e) => setFilterInstitution(e.target.value)}
+              className="input-sm text-sm w-full"
+            >
+              <option value="all">🏢 Todas las instituciones</option>
+              {userInstitutions.map((inst) => (
+                <option key={inst._id} value={inst._id}>
+                  {inst.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Filtrar por Usuario Compartido</label>
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="input-sm text-sm w-full"
+            >
+              <option value="all">👥 Todos los usuarios</option>
+              {contacts
+                .filter(contact => contact.userId && contact.userId._id)
+                .map((contact) => (
+                  <option key={contact.userId._id} value={contact.userId._id}>
+                    {contact.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* View Mode Toggle */}
