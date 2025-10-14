@@ -46,7 +46,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Crear actividad
 router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
-    const { subject, comment, institution, scheduledDate } = req.body;
+    const { subject, comment, institution, scheduledDate, color, isDateRange, startDate, endDate } = req.body;
     
     // Manejar sharedWith como array (viene como sharedWith[] desde FormData)
     let sharedWith = req.body['sharedWith[]'] || req.body.sharedWith || [];
@@ -74,6 +74,10 @@ router.post('/', authenticateToken, uploadActivityFiles, async (req, res) => {
       sharedWith: sharedWith.filter(id => id), // Filtrar valores vacíos
       institution: institution || null,
       scheduledDate: scheduledDate || null,
+      color: color || '#3b82f6',
+      isDateRange: isDateRange === 'true' || isDateRange === true,
+      startDate: startDate || null,
+      endDate: endDate || null,
       status: 'pendiente',
       attachments
     });
@@ -143,7 +147,7 @@ router.get('/:id/attachments/:filename', authenticateToken, async (req, res) => 
 router.put('/:id', authenticateToken, uploadActivityFiles, async (req, res) => {
   try {
     const { id } = req.params;
-    const { subject, comment, institution, status, scheduledDate, existingAttachments } = req.body;
+    const { subject, comment, institution, status, scheduledDate, color, isDateRange, startDate, endDate, existingAttachments } = req.body;
     
     // Manejar sharedWith como array
     let sharedWith = req.body['sharedWith[]'] || req.body.sharedWith || [];
@@ -173,6 +177,10 @@ router.put('/:id', authenticateToken, uploadActivityFiles, async (req, res) => {
       activity.sharedWith = sharedWith.filter(id => id);
       activity.institution = institution || activity.institution;
       activity.scheduledDate = scheduledDate || activity.scheduledDate;
+      activity.color = color || activity.color;
+      activity.isDateRange = isDateRange === 'true' || isDateRange === true || activity.isDateRange;
+      activity.startDate = startDate || activity.startDate;
+      activity.endDate = endDate || activity.endDate;
       
       // Manejar archivos adjuntos
       if (existingAttachments) {

@@ -32,6 +32,22 @@ const activitySchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  isDateRange: {
+    type: Boolean,
+    default: false
+  },
+  startDate: {
+    type: Date,
+    default: null
+  },
+  endDate: {
+    type: Date,
+    default: null
+  },
+  color: {
+    type: String,
+    default: '#3b82f6' // Azul por defecto
+  },
   status: {
     type: String,
     enum: ['pendiente', 'completada'],

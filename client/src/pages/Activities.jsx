@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Calendar as CalendarIcon, Users, Building2, Paperclip, Download, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar as CalendarIcon, Users, Building2, Paperclip, Download, X, Palette } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
@@ -9,7 +9,26 @@ import { activitiesAPI, contactsAPI, usersAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 
 moment.locale('es');
+moment.updateLocale('es', {
+  week: {
+    dow: 1, // Lunes como primer día de la semana
+  },
+});
 const localizer = momentLocalizer(moment);
+
+// Paleta de colores para actividades
+const ACTIVITY_COLORS = [
+  { name: 'Azul', value: '#3b82f6' },
+  { name: 'Rojo', value: '#ef4444' },
+  { name: 'Verde', value: '#10b981' },
+  { name: 'Amarillo', value: '#f59e0b' },
+  { name: 'Morado', value: '#8b5cf6' },
+  { name: 'Rosa', value: '#ec4899' },
+  { name: 'Índigo', value: '#6366f1' },
+  { name: 'Naranja', value: '#f97316' },
+  { name: 'Cian', value: '#06b6d4' },
+  { name: 'Lima', value: '#84cc16' },
+];
 
 const Activities = () => {
   const { user } = useAuth();
@@ -27,7 +46,11 @@ const Activities = () => {
     sharedWith: [],
     institution: '',
     scheduledDate: '',
-    attachments: []
+    attachments: [],
+    color: '#3b82f6',
+    isDateRange: false,
+    startDate: '',
+    endDate: ''
   });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +58,14 @@ const Activities = () => {
   const [scheduledHour, setScheduledHour] = useState('');
   const [scheduledMinute, setScheduledMinute] = useState('00');
   const [scheduledPeriod, setScheduledPeriod] = useState('AM');
+  const [startDateOnly, setStartDateOnly] = useState('');
+  const [endDateOnly, setEndDateOnly] = useState('');
+  const [startHour, setStartHour] = useState('');
+  const [startMinute, setStartMinute] = useState('00');
+  const [startPeriod, setStartPeriod] = useState('AM');
+  const [endHour, setEndHour] = useState('');
+  const [endMinute, setEndMinute] = useState('00');
+  const [endPeriod, setEndPeriod] = useState('AM');
 
   useEffect(() => {
     loadActivities();
@@ -60,6 +91,38 @@ const Activities = () => {
       setFormData(prev => ({ ...prev, scheduledDate: '' }));
     }
   }, [scheduledDateOnly, scheduledHour, scheduledMinute, scheduledPeriod]);
+
+  // Combinar startDate cuando cambian
+  useEffect(() => {
+    if (startDateOnly && startHour && startMinute !== null && startPeriod) {
+      let hour24 = parseInt(startHour);
+      if (startPeriod === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+      } else if (startPeriod === 'AM' && hour24 === 12) {
+        hour24 = 0;
+      }
+      const dateTime = `${startDateOnly}T${String(hour24).padStart(2, '0')}:${startMinute}`;
+      setFormData(prev => ({ ...prev, startDate: dateTime }));
+    } else if (!startDateOnly) {
+      setFormData(prev => ({ ...prev, startDate: '' }));
+    }
+  }, [startDateOnly, startHour, startMinute, startPeriod]);
+
+  // Combinar endDate cuando cambian
+  useEffect(() => {
+    if (endDateOnly && endHour && endMinute !== null && endPeriod) {
+      let hour24 = parseInt(endHour);
+      if (endPeriod === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+      } else if (endPeriod === 'AM' && hour24 === 12) {
+        hour24 = 0;
+      }
+      const dateTime = `${endDateOnly}T${String(hour24).padStart(2, '0')}:${endMinute}`;
+      setFormData(prev => ({ ...prev, endDate: dateTime }));
+    } else if (!endDateOnly) {
+      setFormData(prev => ({ ...prev, endDate: '' }));
+    }
+  }, [endDateOnly, endHour, endMinute, endPeriod]);
 
   const loadActivities = async () => {
     try {
@@ -97,7 +160,15 @@ const Activities = () => {
       formDataToSend.append('subject', formData.subject);
       formDataToSend.append('comment', formData.comment);
       formDataToSend.append('institution', formData.institution || '');
-      formDataToSend.append('scheduledDate', formData.scheduledDate || '');
+      formDataToSend.append('color', formData.color);
+      formDataToSend.append('isDateRange', formData.isDateRange);
+      
+      if (formData.isDateRange) {
+        formDataToSend.append('startDate', formData.startDate || '');
+        formDataToSend.append('endDate', formData.endDate || '');
+      } else {
+        formDataToSend.append('scheduledDate', formData.scheduledDate || '');
+      }
       
       // Agregar usuarios compartidos
       formData.sharedWith.forEach(userId => {
@@ -151,15 +222,40 @@ const Activities = () => {
       sharedWith: activity.sharedWith.map(u => u._id) || [],
       institution: activity.institution?._id || '',
       scheduledDate: activity.scheduledDate ? moment(activity.scheduledDate).format('YYYY-MM-DDTHH:mm') : '',
-      attachments: activity.attachments || []
+      attachments: activity.attachments || [],
+      color: activity.color || '#3b82f6',
+      isDateRange: activity.isDateRange || false,
+      startDate: activity.startDate ? moment(activity.startDate).format('YYYY-MM-DDTHH:mm') : '',
+      endDate: activity.endDate ? moment(activity.endDate).format('YYYY-MM-DDTHH:mm') : ''
     });
     
-    // Separar fecha y hora si existe
-    if (activity.scheduledDate) {
+    // Manejar rango de fechas
+    if (activity.isDateRange && activity.startDate && activity.endDate) {
+      const startDate = moment(activity.startDate);
+      const endDate = moment(activity.endDate);
+      
+      setStartDateOnly(startDate.format('YYYY-MM-DD'));
+      let startHourVal = startDate.hours();
+      const startPeriodVal = startHourVal >= 12 ? 'PM' : 'AM';
+      if (startHourVal > 12) startHourVal -= 12;
+      if (startHourVal === 0) startHourVal = 12;
+      setStartHour(String(startHourVal));
+      setStartMinute(startDate.format('mm'));
+      setStartPeriod(startPeriodVal);
+      
+      setEndDateOnly(endDate.format('YYYY-MM-DD'));
+      let endHourVal = endDate.hours();
+      const endPeriodVal = endHourVal >= 12 ? 'PM' : 'AM';
+      if (endHourVal > 12) endHourVal -= 12;
+      if (endHourVal === 0) endHourVal = 12;
+      setEndHour(String(endHourVal));
+      setEndMinute(endDate.format('mm'));
+      setEndPeriod(endPeriodVal);
+    } else if (activity.scheduledDate) {
+      // Fecha única
       const date = moment(activity.scheduledDate);
       setScheduledDateOnly(date.format('YYYY-MM-DD'));
       
-      // Convertir a formato 12h AM/PM
       let hour = date.hours();
       const period = hour >= 12 ? 'PM' : 'AM';
       if (hour > 12) hour -= 12;
@@ -169,10 +265,19 @@ const Activities = () => {
       setScheduledMinute(date.format('mm'));
       setScheduledPeriod(period);
     } else {
+      // Limpiar fechas
       setScheduledDateOnly('');
       setScheduledHour('');
       setScheduledMinute('00');
       setScheduledPeriod('AM');
+      setStartDateOnly('');
+      setEndDateOnly('');
+      setStartHour('');
+      setStartMinute('00');
+      setStartPeriod('AM');
+      setEndHour('');
+      setEndMinute('00');
+      setEndPeriod('AM');
     }
     
     setShowModal(true);
@@ -195,12 +300,24 @@ const Activities = () => {
       sharedWith: [],
       institution: '',
       scheduledDate: '',
-      attachments: []
+      attachments: [],
+      color: '#3b82f6',
+      isDateRange: false,
+      startDate: '',
+      endDate: ''
     });
     setScheduledDateOnly('');
     setScheduledHour('');
     setScheduledMinute('00');
     setScheduledPeriod('AM');
+    setStartDateOnly('');
+    setEndDateOnly('');
+    setStartHour('');
+    setStartMinute('00');
+    setStartPeriod('AM');
+    setEndHour('');
+    setEndMinute('00');
+    setEndPeriod('AM');
   };
 
   const handleFileChange = (e) => {
@@ -280,14 +397,51 @@ const Activities = () => {
 
   // Preparar eventos para el calendario
   const calendarEvents = activities
-    .filter(a => a.scheduledDate && a.status !== 'completada')
-    .map(a => ({
-      id: a._id,
-      title: a.subject,
-      start: new Date(a.scheduledDate),
-      end: new Date(a.scheduledDate),
-      resource: a
-    }));
+    .filter(a => ((a.scheduledDate || (a.isDateRange && a.startDate && a.endDate)) && a.status !== 'completada'))
+    .flatMap(a => {
+      if (a.isDateRange && a.startDate && a.endDate) {
+        // Crear un evento para cada día en el rango
+        const events = [];
+        const start = moment(a.startDate);
+        const end = moment(a.endDate);
+        const current = start.clone();
+        
+        while (current.isSameOrBefore(end, 'day')) {
+          events.push({
+            id: `${a._id}-${current.format('YYYY-MM-DD')}`,
+            title: a.subject,
+            start: current.toDate(),
+            end: current.clone().endOf('day').toDate(),
+            resource: a,
+            color: a.color || '#3b82f6'
+          });
+          current.add(1, 'day');
+        }
+        return events;
+      } else if (a.scheduledDate) {
+        // Evento de fecha única
+        return [{
+          id: a._id,
+          title: a.subject,
+          start: new Date(a.scheduledDate),
+          end: new Date(a.scheduledDate),
+          resource: a,
+          color: a.color || '#3b82f6'
+        }];
+      }
+      return [];
+    });
+
+  // Función para aplicar estilos personalizados a los eventos
+  const eventStyleGetter = (event) => {
+    return {
+      style: {
+        backgroundColor: event.color,
+        borderColor: event.color,
+        color: 'white'
+      }
+    };
+  };
 
   // Filtrar actividades según el modo de vista y filtros
   const getFilteredActivities = () => {
@@ -620,6 +774,7 @@ const Activities = () => {
             onSelectEvent={(event) => handleEdit(event.resource)}
             onSelectSlot={handleSelectSlot}
             selectable
+            eventPropGetter={eventStyleGetter}
             messages={{
               next: "Siguiente",
               previous: "Anterior",
@@ -631,9 +786,14 @@ const Activities = () => {
               date: "Fecha",
               time: "Hora",
               event: "Evento",
+              allDay: "Todo el día",
+              work_week: "Semana laboral",
+              yesterday: "Ayer",
+              tomorrow: "Mañana",
               noEventsInRange: "No hay actividades en este rango",
               showMore: (total) => `+ Ver más (${total})`
             }}
+            culture="es"
           />
         </div>
       )}
@@ -704,80 +864,291 @@ const Activities = () => {
               </div>
 
               <div>
-                <label className="label">Fecha programada (opcional)</label>
-                <input
-                  type="date"
-                  value={scheduledDateOnly}
-                  onChange={(e) => {
-                    setScheduledDateOnly(e.target.value);
-                    // Si selecciona una fecha y no hay hora, establecer hora actual
-                    if (e.target.value && !scheduledHour) {
-                      const now = new Date();
-                      let hour = now.getHours();
-                      const period = hour >= 12 ? 'PM' : 'AM';
-                      if (hour > 12) hour -= 12;
-                      if (hour === 0) hour = 12;
-                      setScheduledHour(String(hour));
-                      setScheduledPeriod(period);
-                      
-                      // Redondear minutos
-                      const minutes = now.getMinutes();
-                      let roundedMinutes = '00';
-                      if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
-                      else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
-                      else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
-                      else if (minutes >= 52) roundedMinutes = '00';
-                      setScheduledMinute(roundedMinutes);
-                    }
-                  }}
-                  className="input"
-                />
-                {scheduledDateOnly && (
-                  <div className="mt-3 grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="label text-sm">Hora *</label>
-                      <select
-                        value={scheduledHour}
-                        onChange={(e) => setScheduledHour(e.target.value)}
-                        required
-                        className="input text-sm"
-                      >
-                        <option value="">--</option>
-                        {[...Array(12)].map((_, i) => (
-                          <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label text-sm">Minutos *</label>
-                      <select
-                        value={scheduledMinute}
-                        onChange={(e) => setScheduledMinute(e.target.value)}
-                        required
-                        className="input text-sm"
-                      >
-                        <option value="00">00</option>
-                        <option value="15">15</option>
-                        <option value="30">30</option>
-                        <option value="45">45</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label text-sm">AM/PM *</label>
-                      <select
-                        value={scheduledPeriod}
-                        onChange={(e) => setScheduledPeriod(e.target.value)}
-                        required
-                        className="input text-sm"
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-                <p className="text-sm text-gray-500 mt-1">Las actividades con fecha aparecerán en el calendario</p>
+                <label className="label flex items-center gap-2">
+                  <Palette size={16} />
+                  Color de la actividad
+                </label>
+                <div className="grid grid-cols-5 gap-2">
+                  {ACTIVITY_COLORS.map((colorOption) => (
+                    <button
+                      key={colorOption.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, color: colorOption.value })}
+                      className={`h-10 rounded-lg border-2 transition-all ${
+                        formData.color === colorOption.value
+                          ? 'border-gray-800 scale-110 shadow-lg'
+                          : 'border-gray-300 hover:border-gray-500'
+                      }`}
+                      style={{ backgroundColor: colorOption.value }}
+                      title={colorOption.name}
+                    >
+                      {formData.color === colorOption.value && (
+                        <span className="text-white font-bold">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Selecciona un color para identificar la actividad en el calendario</p>
               </div>
+
+              <div>
+                <label className="label flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.isDateRange}
+                    onChange={(e) => {
+                      setFormData({ ...formData, isDateRange: e.target.checked });
+                      if (!e.target.checked) {
+                        // Limpiar fechas de rango si se desmarca
+                        setStartDateOnly('');
+                        setEndDateOnly('');
+                        setStartHour('');
+                        setStartMinute('00');
+                        setStartPeriod('AM');
+                        setEndHour('');
+                        setEndMinute('00');
+                        setEndPeriod('AM');
+                      } else {
+                        // Limpiar fecha única si se marca rango
+                        setScheduledDateOnly('');
+                        setScheduledHour('');
+                        setScheduledMinute('00');
+                        setScheduledPeriod('AM');
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  Rango de días
+                </label>
+              </div>
+
+              {!formData.isDateRange ? (
+                <div>
+                  <label className="label">Fecha programada (opcional)</label>
+                  <input
+                    type="date"
+                    value={scheduledDateOnly}
+                    onChange={(e) => {
+                      setScheduledDateOnly(e.target.value);
+                      if (e.target.value && !scheduledHour) {
+                        const now = new Date();
+                        let hour = now.getHours();
+                        const period = hour >= 12 ? 'PM' : 'AM';
+                        if (hour > 12) hour -= 12;
+                        if (hour === 0) hour = 12;
+                        setScheduledHour(String(hour));
+                        setScheduledPeriod(period);
+                        
+                        const minutes = now.getMinutes();
+                        let roundedMinutes = '00';
+                        if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
+                        else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
+                        else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
+                        else if (minutes >= 52) roundedMinutes = '00';
+                        setScheduledMinute(roundedMinutes);
+                      }
+                    }}
+                    className="input"
+                  />
+                  {scheduledDateOnly && (
+                    <div className="mt-3 grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="label text-sm">Hora *</label>
+                        <select
+                          value={scheduledHour}
+                          onChange={(e) => setScheduledHour(e.target.value)}
+                          required
+                          className="input text-sm"
+                        >
+                          <option value="">--</option>
+                          {[...Array(12)].map((_, i) => (
+                            <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label text-sm">Minutos *</label>
+                        <select
+                          value={scheduledMinute}
+                          onChange={(e) => setScheduledMinute(e.target.value)}
+                          required
+                          className="input text-sm"
+                        >
+                          <option value="00">00</option>
+                          <option value="15">15</option>
+                          <option value="30">30</option>
+                          <option value="45">45</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label text-sm">AM/PM *</label>
+                        <select
+                          value={scheduledPeriod}
+                          onChange={(e) => setScheduledPeriod(e.target.value)}
+                          required
+                          className="input text-sm"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-500 mt-1">Las actividades con fecha aparecerán en el calendario</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="label">Fecha de inicio *</label>
+                    <input
+                      type="date"
+                      value={startDateOnly}
+                      onChange={(e) => {
+                        setStartDateOnly(e.target.value);
+                        if (e.target.value && !startHour) {
+                          const now = new Date();
+                          let hour = now.getHours();
+                          const period = hour >= 12 ? 'PM' : 'AM';
+                          if (hour > 12) hour -= 12;
+                          if (hour === 0) hour = 12;
+                          setStartHour(String(hour));
+                          setStartPeriod(period);
+                          
+                          const minutes = now.getMinutes();
+                          let roundedMinutes = '00';
+                          if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
+                          else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
+                          else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
+                          else if (minutes >= 52) roundedMinutes = '00';
+                          setStartMinute(roundedMinutes);
+                        }
+                      }}
+                      className="input"
+                      required={formData.isDateRange}
+                    />
+                    {startDateOnly && (
+                      <div className="mt-3 grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="label text-sm">Hora *</label>
+                          <select
+                            value={startHour}
+                            onChange={(e) => setStartHour(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="">--</option>
+                            {[...Array(12)].map((_, i) => (
+                              <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label text-sm">Minutos *</label>
+                          <select
+                            value={startMinute}
+                            onChange={(e) => setStartMinute(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label text-sm">AM/PM *</label>
+                          <select
+                            value={startPeriod}
+                            onChange={(e) => setStartPeriod(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="label">Fecha de fin *</label>
+                    <input
+                      type="date"
+                      value={endDateOnly}
+                      onChange={(e) => {
+                        setEndDateOnly(e.target.value);
+                        if (e.target.value && !endHour) {
+                          const now = new Date();
+                          let hour = now.getHours();
+                          const period = hour >= 12 ? 'PM' : 'AM';
+                          if (hour > 12) hour -= 12;
+                          if (hour === 0) hour = 12;
+                          setEndHour(String(hour));
+                          setEndPeriod(period);
+                          
+                          const minutes = now.getMinutes();
+                          let roundedMinutes = '00';
+                          if (minutes >= 7 && minutes < 22) roundedMinutes = '15';
+                          else if (minutes >= 22 && minutes < 37) roundedMinutes = '30';
+                          else if (minutes >= 37 && minutes < 52) roundedMinutes = '45';
+                          else if (minutes >= 52) roundedMinutes = '00';
+                          setEndMinute(roundedMinutes);
+                        }
+                      }}
+                      className="input"
+                      required={formData.isDateRange}
+                      min={startDateOnly}
+                    />
+                    {endDateOnly && (
+                      <div className="mt-3 grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="label text-sm">Hora *</label>
+                          <select
+                            value={endHour}
+                            onChange={(e) => setEndHour(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="">--</option>
+                            {[...Array(12)].map((_, i) => (
+                              <option key={i + 1} value={String(i + 1)}>{i + 1}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label text-sm">Minutos *</label>
+                          <select
+                            value={endMinute}
+                            onChange={(e) => setEndMinute(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label text-sm">AM/PM *</label>
+                          <select
+                            value={endPeriod}
+                            onChange={(e) => setEndPeriod(e.target.value)}
+                            required
+                            className="input text-sm"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">La actividad se mostrará en todos los días del rango seleccionado</p>
+                </div>
+              )}
 
               <div>
                 <label className="label flex items-center gap-2">
