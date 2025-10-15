@@ -15,6 +15,7 @@ import Complaints from './pages/Complaints';
 import Contracts from './pages/Contracts';
 import Stock from './pages/Stock';
 import Notes from './pages/Notes';
+import RawMaterials from './pages/RawMaterials';
 import Profile from './pages/Profile';
 import AdminUsers from './pages/AdminUsers';
 import AdminInstitutions from './pages/AdminInstitutions';
@@ -117,6 +118,18 @@ function App() {
                 <PermissionRoute permission="notes">
                   <Layout>
                     <Notes />
+                  </Layout>
+                </PermissionRoute>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/raw-materials"
+            element={
+              <PrivateRoute>
+                <PermissionRoute permission="rawMaterials">
+                  <Layout>
+                    <RawMaterials />
                   </Layout>
                 </PermissionRoute>
               </PrivateRoute>

@@ -22,6 +22,7 @@ import stockRoutes from './routes/stock.js';
 import notesRoutes from './routes/notes.js';
 import pushTokensRoutes from './routes/pushTokens.js';
 import testNotificationsRoutes from './routes/testNotifications.js';
+import rawMaterialsRoutes from './routes/rawMaterials.js';
 
 // Importar modelos
 import User from './models/User.js';
@@ -145,6 +146,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/push-tokens', pushTokensRoutes);
 app.use('/api/test-notifications', testNotificationsRoutes);
+app.use('/api/raw-materials', rawMaterialsRoutes);
 
 // Servir archivos estáticos en producción
 if (process.env.NODE_ENV === 'production') {

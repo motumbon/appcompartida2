@@ -75,6 +75,10 @@ const userSchema = new mongoose.Schema({
     notes: {
       type: Boolean,
       default: true
+    },
+    rawMaterials: {
+      type: Boolean,
+      default: true
     }
   },
   contacts: [{

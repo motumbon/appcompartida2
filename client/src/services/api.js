@@ -179,4 +179,19 @@ export const notesAPI = {
   deleteNote: (id) => api.delete(`/notes/${id}`)
 };
 
+// Raw Materials API
+export const rawMaterialsAPI = {
+  getAll: (params) => api.get('/raw-materials', { params }),
+  upload: (formData) => api.post('/raw-materials', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  delete: (id) => api.delete(`/raw-materials/${id}`),
+  download: (id) => api.get(`/raw-materials/download/${id}`, {
+    responseType: 'blob'
+  }),
+  view: (id) => `${API_URL}/raw-materials/view/${id}`
+};
+
 export default api;
