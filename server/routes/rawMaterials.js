@@ -1,5 +1,5 @@
 import express from 'express';
-import auth from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -44,7 +44,7 @@ const upload = multer({
 });
 
 // GET todos los documentos
-router.get('/', auth, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { category, parentCategory } = req.query;
     
@@ -65,7 +65,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST subir documento
-router.post('/', auth, upload.single('file'), async (req, res) => {
+router.post('/', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const { title, category, parentCategory, institution } = req.body;
     
@@ -80,7 +80,7 @@ router.post('/', auth, upload.single('file'), async (req, res) => {
       filename: req.file.filename,
       originalName: req.file.originalname,
       fileSize: req.file.size,
-      uploadedBy: req.user.id,
+      uploadedBy: req.user._id,
       institution: institution || null
     });
     
@@ -105,7 +105,7 @@ router.post('/', auth, upload.single('file'), async (req, res) => {
 });
 
 // DELETE eliminar documento
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const document = await RawMaterial.findById(req.params.id);
     
@@ -114,7 +114,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
     
     // Verificar que sea admin o el creador
-    if (req.user.role !== 'admin' && document.uploadedBy.toString() !== req.user.id) {
+    if (!req.user.isAdmin && document.uploadedBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'No tienes permiso para eliminar este documento' });
     }
     
@@ -136,7 +136,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // GET descargar documento
-router.get('/download/:id', auth, async (req, res) => {
+router.get('/download/:id', authenticateToken, async (req, res) => {
   try {
     const document = await RawMaterial.findById(req.params.id);
     
@@ -159,7 +159,7 @@ router.get('/download/:id', auth, async (req, res) => {
 });
 
 // GET ver/abrir documento
-router.get('/view/:id', auth, async (req, res) => {
+router.get('/view/:id', authenticateToken, async (req, res) => {
   try {
     const document = await RawMaterial.findById(req.params.id);
     
