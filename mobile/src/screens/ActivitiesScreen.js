@@ -364,9 +364,10 @@ export default function ActivitiesScreen({ route }) {
             dots: []
           };
         }
+        const activityColor = getColorByName(activity.color || 'blue');
         marked[date].dots.push({
-          color: activity.status === 'completada' ? '#10b981' : '#f59e0b',
-          selectedDotColor: activity.status === 'completada' ? '#10b981' : '#f59e0b'
+          color: activityColor.hex,
+          selectedDotColor: activityColor.hex
         });
       }
     });
@@ -670,12 +671,32 @@ export default function ActivitiesScreen({ route }) {
                 numberOfLines={4}
               />
 
-              <Text style={styles.label}>Fecha programada</Text>
+              {/* Selector de Color */}
+              <Text style={styles.label}>Color</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorScroll}>
+                {ACTIVITY_COLORS.map((color) => (
+                  <TouchableOpacity
+                    key={color.id}
+                    style={[
+                      styles.colorButton,
+                      { backgroundColor: color.hex },
+                      formData.color === color.id && styles.colorButtonSelected
+                    ]}
+                    onPress={() => setFormData({ ...formData, color: color.id })}
+                  >
+                    {formData.color === color.id && (
+                      <Ionicons name="checkmark" size={20} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.label}>Fecha de Inicio *</Text>
               <View style={styles.datePickersRow}>
                 <View style={[styles.pickerContainer, { flex: 1, marginRight: 4 }]}>
                   <Picker
-                    selectedValue={dateDay}
-                    onValueChange={(value) => setDateDay(value)}
+                    selectedValue={startDateDay}
+                    onValueChange={(value) => setStartDateDay(value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="Día" value="" />
@@ -686,8 +707,8 @@ export default function ActivitiesScreen({ route }) {
                 </View>
                 <View style={[styles.pickerContainer, { flex: 1, marginHorizontal: 4 }]}>
                   <Picker
-                    selectedValue={dateMonth}
-                    onValueChange={(value) => setDateMonth(value)}
+                    selectedValue={startDateMonth}
+                    onValueChange={(value) => setStartDateMonth(value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="Mes" value="" />
@@ -707,12 +728,61 @@ export default function ActivitiesScreen({ route }) {
                 </View>
                 <View style={[styles.pickerContainer, { flex: 1, marginLeft: 4 }]}>
                   <Picker
-                    selectedValue={dateYear}
-                    onValueChange={(value) => setDateYear(value)}
+                    selectedValue={startDateYear}
+                    onValueChange={(value) => setStartDateYear(value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="Año" value="" />
-                    {Array.from({length: 5}, (_, i) => 2025 + i).map(year => (
+                    {Array.from({length: 5}, (_, i) => 2024 + i).map(year => (
+                      <Picker.Item key={year} label={String(year)} value={String(year)} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              <Text style={styles.label}>Fecha de Fin (opcional - para rango de días)</Text>
+              <View style={styles.datePickersRow}>
+                <View style={[styles.pickerContainer, { flex: 1, marginRight: 4 }]}>
+                  <Picker
+                    selectedValue={endDateDay}
+                    onValueChange={(value) => setEndDateDay(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Día" value="" />
+                    {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+                      <Picker.Item key={day} label={String(day)} value={String(day)} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, { flex: 1, marginHorizontal: 4 }]}>
+                  <Picker
+                    selectedValue={endDateMonth}
+                    onValueChange={(value) => setEndDateMonth(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Mes" value="" />
+                    <Picker.Item label="Enero" value="1" />
+                    <Picker.Item label="Febrero" value="2" />
+                    <Picker.Item label="Marzo" value="3" />
+                    <Picker.Item label="Abril" value="4" />
+                    <Picker.Item label="Mayo" value="5" />
+                    <Picker.Item label="Junio" value="6" />
+                    <Picker.Item label="Julio" value="7" />
+                    <Picker.Item label="Agosto" value="8" />
+                    <Picker.Item label="Septiembre" value="9" />
+                    <Picker.Item label="Octubre" value="10" />
+                    <Picker.Item label="Noviembre" value="11" />
+                    <Picker.Item label="Diciembre" value="12" />
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, { flex: 1, marginLeft: 4 }]}>
+                  <Picker
+                    selectedValue={endDateYear}
+                    onValueChange={(value) => setEndDateYear(value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Año" value="" />
+                    {Array.from({length: 5}, (_, i) => 2024 + i).map(year => (
                       <Picker.Item key={year} label={String(year)} value={String(year)} />
                     ))}
                   </Picker>
@@ -1274,5 +1344,26 @@ const styles = StyleSheet.create({
   calendarActivityComment: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  colorScroll: {
+    marginBottom: 16,
+  },
+  colorButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorButtonSelected: {
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });
