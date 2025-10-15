@@ -96,7 +96,7 @@ const AdminUsers = () => {
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Contratos</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status BO</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Notas</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Materias Primas</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Fichas Técnicas</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>

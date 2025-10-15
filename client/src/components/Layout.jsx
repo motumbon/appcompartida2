@@ -36,7 +36,7 @@ const Layout = ({ children }) => {
     { path: '/contracts', label: 'Contratos', icon: FileText, permission: 'contracts' },
     { path: '/stock', label: 'Status BO', icon: Package, permission: 'stock' },
     { path: '/notes', label: 'Notas', icon: StickyNote, permission: 'notes' },
-    { path: '/raw-materials', label: 'Materias Primas', icon: Beaker, permission: 'rawMaterials' },
+    { path: '/raw-materials', label: 'Fichas Técnicas', icon: Beaker, permission: 'rawMaterials' },
   ];
 
   const menuItems = allMenuItems.filter(item => {

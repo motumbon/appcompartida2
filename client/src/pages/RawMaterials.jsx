@@ -186,7 +186,7 @@ const RawMaterials = () => {
       <ToastContainer position="top-right" autoClose={3000} />
       
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Materias Primas</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Fichas Técnicas</h1>
         {selectedCategory && user?.isAdmin && (
           <button
             type="button"
@@ -227,8 +227,6 @@ const RawMaterials = () => {
       {!selectedCategory ? (
         /* Vista de categorías principales */
         <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-2xl font-bold text-center mb-8 text-blue-700">Fichas Técnicas</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Object.entries(categoryStructure).map(([parentName, { children }]) => (
               <div key={parentName} className="space-y-3">
