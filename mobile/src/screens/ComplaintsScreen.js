@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { complaintsAPI, contactsAPI, usersAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getTimeElapsed, getTimeElapsedColor, getTimeElapsedBgColor } from '../utils/timeCounter';
 
 export default function ComplaintsScreen() {
   const { user } = useAuth();
@@ -199,6 +200,21 @@ export default function ComplaintsScreen() {
       </View>
       
       <Text style={styles.description}>{item.description}</Text>
+
+      {/* Contador de tiempo */}
+      {item.createdAt && (() => {
+        const { days, hours } = getTimeElapsed(item.createdAt);
+        const bgColor = getTimeElapsedBgColor(days);
+        const textColor = getTimeElapsedColor(days);
+        return (
+          <View style={[styles.timeCounter, { backgroundColor: bgColor }]}>
+            <Ionicons name="time-outline" size={14} color={textColor} />
+            <Text style={[styles.timeCounterText, { color: textColor }]}>
+              {days}d {hours}h
+            </Text>
+          </View>
+        );
+      })()}
 
       <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
         <Text style={styles.statusText}>{item.status.replace('_', ' ')}</Text>
@@ -573,5 +589,19 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  timeCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  timeCounterText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
