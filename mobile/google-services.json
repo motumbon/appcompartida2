@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "79724054527",
+    "project_id": "app-trabajo-en-terreno",
+    "storage_bucket": "app-trabajo-en-terreno.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:79724054527:android:d74ad43258b4e3cd7109ca",
+        "android_client_info": {
+          "package_name": "com.apptrabajoenterreno.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7hy3gxhgScvAE5xX_hLAJzJjbCCfdp3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
