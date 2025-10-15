@@ -152,4 +152,10 @@ export const pushTokensAPI = {
   unregister: () => api.delete('/push-tokens/unregister')
 };
 
+export const rawMaterialsAPI = {
+  getAll: (params) => api.get('/raw-materials', { params }),
+  download: (id) => api.get(`/raw-materials/download/${id}`, { responseType: 'blob' }),
+  getViewUrl: (id) => `${API_URL}/raw-materials/view/${id}`
+};
+
 export default api;
