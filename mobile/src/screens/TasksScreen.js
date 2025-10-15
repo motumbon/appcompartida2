@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Alert, Modal, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { tasksAPI, contactsAPI, institutionsAPI } from '../config/api';
+import { Picker } from '@react-native-picker/picker';
+import { tasksAPI, contactsAPI, institutionsAPI, usersAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getTimeElapsed, getTimeElapsedColor, getTimeElapsedBgColor } from '../utils/timeCounter';
 
 export default function TasksScreen({ route }) {
   const { user } = useAuth();
@@ -14,6 +16,9 @@ export default function TasksScreen({ route }) {
   const [editingTask, setEditingTask] = useState(null);
   const [lastTap, setLastTap] = useState(null);
   const [viewMode, setViewMode] = useState('pending'); // 'pending', 'completed', 'assigned'
+  const [filterInstitution, setFilterInstitution] = useState('all');
+  const [filterUser, setFilterUser] = useState('all');
+  const [userInstitutions, setUserInstitutions] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -31,6 +36,7 @@ export default function TasksScreen({ route }) {
     loadTasks();
     loadContacts();
     loadInstitutions();
+    loadUserInstitutions();
   }, []);
 
   // Manejar parámetros de navegación
@@ -78,6 +84,15 @@ export default function TasksScreen({ route }) {
       setInstitutions(response.data);
     } catch (error) {
       console.error('Error al cargar instituciones:', error);
+    }
+  };
+
+  const loadUserInstitutions = async () => {
+    try {
+      const response = await usersAPI.getUserInstitutions();
+      setUserInstitutions(response.data);
+    } catch (error) {
+      console.error('Error al cargar instituciones del usuario:', error);
     }
   };
 
@@ -240,15 +255,90 @@ export default function TasksScreen({ route }) {
       Array.isArray(task.sharedWith) && task.sharedWith.some(u => String(u._id || u) === currentUserId);
   };
 
+  const getInstitutionsWithTasks = () => {
+    const institutionIds = new Set();
+    const institutionsMap = new Map();
+    
+    tasks.forEach(task => {
+      if (task.institution) {
+        const instId = task.institution._id || task.institution;
+        const instName = task.institution.name || userInstitutions.find(i => i._id === instId)?.name;
+        if (instId && instName) {
+          institutionIds.add(instId);
+          institutionsMap.set(instId, { _id: instId, name: instName });
+        }
+      }
+    });
+    
+    return Array.from(institutionsMap.values());
+  };
+
+  const getUsersWithSharedTasks = () => {
+    const userIds = new Set();
+    const usersMap = new Map();
+    const currentUserId = (user?._id || user?.id)?.toString();
+    
+    tasks.forEach(task => {
+      const creatorId = (task.createdBy?._id || task.createdBy)?.toString();
+      
+      if (creatorId !== currentUserId && task.sharedWith?.some(u => (u?._id || u)?.toString() === currentUserId)) {
+        const creator = task.createdBy;
+        const creatorName = creator.username || creator.name;
+        if (creatorId && creatorName) {
+          userIds.add(creatorId);
+          usersMap.set(creatorId, { _id: creatorId, name: creatorName });
+        }
+      }
+      
+      if (creatorId === currentUserId && task.sharedWith && task.sharedWith.length > 0) {
+        task.sharedWith.forEach(sharedUser => {
+          const sharedUserId = (sharedUser?._id || sharedUser)?.toString();
+          const sharedUserName = sharedUser.username || sharedUser.name;
+          if (sharedUserId && sharedUserId !== currentUserId && sharedUserName) {
+            userIds.add(sharedUserId);
+            usersMap.set(sharedUserId, { _id: sharedUserId, name: sharedUserName });
+          }
+        });
+      }
+    });
+    
+    return Array.from(usersMap.values());
+  };
+
   const getFilteredTasks = () => {
     let filtered = tasks;
 
+    // Filtro por modo de vista
     if (viewMode === 'pending') {
-      filtered = tasks.filter(t => t.status === 'pendiente');
+      filtered = filtered.filter(t => t.status === 'pendiente');
     } else if (viewMode === 'completed') {
-      filtered = tasks.filter(t => t.status === 'completada');
+      filtered = filtered.filter(t => t.status === 'completada');
     } else if (viewMode === 'assigned') {
-      filtered = tasks.filter(t => isSharedWithMe(t));
+      filtered = filtered.filter(t => isSharedWithMe(t));
+    }
+
+    // Filtro por institución
+    if (filterInstitution !== 'all') {
+      filtered = filtered.filter(t => {
+        const taskInstitutionId = t.institution?._id || t.institution;
+        return taskInstitutionId === filterInstitution;
+      });
+    }
+
+    // Filtro por usuario compartido
+    if (filterUser !== 'all') {
+      filtered = filtered.filter(t => {
+        const creatorId = (t.createdBy?._id || t.createdBy)?.toString();
+        const currentUserId = (user?._id || user?.id)?.toString();
+        
+        const createdByUserAndSharedWithMe = creatorId === filterUser && 
+          t.sharedWith?.some(u => (u?._id || u)?.toString() === currentUserId);
+        
+        const createdByMeAndSharedWithUser = creatorId === currentUserId && 
+          t.sharedWith?.some(u => (u?._id || u)?.toString() === filterUser);
+        
+        return createdByUserAndSharedWithMe || createdByMeAndSharedWithUser;
+      });
     }
 
     return filtered;
@@ -315,6 +405,21 @@ export default function TasksScreen({ route }) {
         </View>
       )}
 
+      {/* Contador de tiempo */}
+      {item.createdAt && (() => {
+        const { days, hours } = getTimeElapsed(item.createdAt);
+        const bgColor = getTimeElapsedBgColor(days);
+        const textColor = getTimeElapsedColor(days);
+        return (
+          <View style={[styles.timeCounter, { backgroundColor: bgColor }]}>
+            <Ionicons name="time-outline" size={14} color={textColor} />
+            <Text style={[styles.timeCounterText, { color: textColor }]}>
+              {days}d {hours}h
+            </Text>
+          </View>
+        );
+      })()}
+
       <View style={styles.cardFooter}>
         {item.dueDate && (
           <View style={styles.infoRow}>
@@ -379,6 +484,41 @@ export default function TasksScreen({ route }) {
             </Text>
           </TouchableOpacity>
         </ScrollView>
+      </View>
+
+      {/* Filtros Adicionales */}
+      <View style={styles.additionalFiltersContainer}>
+        <Text style={styles.filtersTitle}>Filtros</Text>
+        
+        {/* Filtro por Institución */}
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Institución:</Text>
+          <Picker
+            selectedValue={filterInstitution}
+            onValueChange={(value) => setFilterInstitution(value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="🏢 Todas las instituciones" value="all" />
+            {getInstitutionsWithTasks().map((inst) => (
+              <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
+            ))}
+          </Picker>
+        </View>
+
+        {/* Filtro por Usuario */}
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Usuario Compartido:</Text>
+          <Picker
+            selectedValue={filterUser}
+            onValueChange={(value) => setFilterUser(value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="👥 Todos los usuarios" value="all" />
+            {getUsersWithSharedTasks().map((u) => (
+              <Picker.Item key={u._id} label={u.name} value={u._id} />
+            ))}
+          </Picker>
+        </View>
       </View>
 
       <FlatList
@@ -813,5 +953,45 @@ const styles = StyleSheet.create({
   },
   institutionChipTextSelected: {
     color: '#fff',
+  },
+  timeCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  timeCounterText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  additionalFiltersContainer: {
+    backgroundColor: '#fff',
+    padding: 12,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  filtersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  pickerContainer: {
+    marginBottom: 12,
+  },
+  pickerLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginBottom: 6,
+  },
+  picker: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
   },
 });
