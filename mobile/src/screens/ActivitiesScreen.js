@@ -5,6 +5,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars';
 import { activitiesAPI, contactsAPI, usersAPI } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import '../config/calendarLocale';
+import { ACTIVITY_COLORS, getColorByName } from '../constants/activityColors';
 
 export default function ActivitiesScreen({ route }) {
   const { user } = useAuth();
@@ -29,15 +31,20 @@ export default function ActivitiesScreen({ route }) {
     status: 'pendiente',
     institution: '',
     sharedWith: [],
-    scheduledDate: '',
-    scheduledTime: ''
+    scheduledDateStart: '',
+    scheduledDateEnd: '',
+    scheduledTime: '',
+    color: 'blue'
   });
   const [selectedUsers, setSelectedUsers] = useState([]);
   
   // Estados para fecha y hora
-  const [dateDay, setDateDay] = useState('');
-  const [dateMonth, setDateMonth] = useState('');
-  const [dateYear, setDateYear] = useState('');
+  const [startDateDay, setStartDateDay] = useState('');
+  const [startDateMonth, setStartDateMonth] = useState('');
+  const [startDateYear, setStartDateYear] = useState('');
+  const [endDateDay, setEndDateDay] = useState('');
+  const [endDateMonth, setEndDateMonth] = useState('');
+  const [endDateYear, setEndDateYear] = useState('');
   const [timeHour, setTimeHour] = useState('');
   const [timeMinute, setTimeMinute] = useState('');
 
@@ -108,13 +115,21 @@ export default function ActivitiesScreen({ route }) {
     setRefreshing(false);
   };
 
-  // Actualizar scheduledDate cuando cambian los pickers
+  // Actualizar scheduledDateStart cuando cambian los pickers
   useEffect(() => {
-    if (dateYear && dateMonth && dateDay) {
-      const newDate = `${dateYear}-${dateMonth.padStart(2, '0')}-${dateDay.padStart(2, '0')}`;
-      setFormData(prev => ({ ...prev, scheduledDate: newDate }));
+    if (startDateYear && startDateMonth && startDateDay) {
+      const newDate = `${startDateYear}-${startDateMonth.padStart(2, '0')}-${startDateDay.padStart(2, '0')}`;
+      setFormData(prev => ({ ...prev, scheduledDateStart: newDate }));
     }
-  }, [dateYear, dateMonth, dateDay]);
+  }, [startDateYear, startDateMonth, startDateDay]);
+
+  // Actualizar scheduledDateEnd cuando cambian los pickers
+  useEffect(() => {
+    if (endDateYear && endDateMonth && endDateDay) {
+      const newDate = `${endDateYear}-${endDateMonth.padStart(2, '0')}-${endDateDay.padStart(2, '0')}`;
+      setFormData(prev => ({ ...prev, scheduledDateEnd: newDate }));
+    }
+  }, [endDateYear, endDateMonth, endDateDay]);
 
   useEffect(() => {
     if (timeHour && timeMinute !== '') {
@@ -130,25 +145,56 @@ export default function ActivitiesScreen({ route }) {
     }
 
     try {
-      const dataToSend = {
+      const baseData = {
         subject: formData.subject,
         comment: formData.comment,
         status: formData.status,
         institution: formData.institution || undefined,
-        sharedWith: selectedUsers
+        sharedWith: selectedUsers,
+        color: formData.color || 'blue'
       };
 
-      // Agregar fecha y hora si están definidas
-      if (formData.scheduledDate && formData.scheduledTime) {
-        dataToSend.scheduledDate = `${formData.scheduledDate}T${formData.scheduledTime}`;
-      }
+      // Si hay rango de fechas, crear múltiples actividades
+      if (formData.scheduledDateStart && formData.scheduledDateEnd && formData.scheduledTime) {
+        const start = new Date(formData.scheduledDateStart);
+        const end = new Date(formData.scheduledDateEnd);
+        
+        if (end < start) {
+          Alert.alert('Error', 'La fecha de fin debe ser posterior a la fecha de inicio');
+          return;
+        }
 
-      if (editingActivity) {
-        await activitiesAPI.update(editingActivity._id, dataToSend);
-        Alert.alert('Éxito', 'Actividad actualizada correctamente');
+        // Crear actividad para cada día del rango
+        const promises = [];
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+          const dateStr = date.toISOString().split('T')[0];
+          const dataToSend = {
+            ...baseData,
+            scheduledDate: `${dateStr}T${formData.scheduledTime}`
+          };
+          promises.push(activitiesAPI.create(dataToSend));
+        }
+
+        await Promise.all(promises);
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        Alert.alert('Éxito', `${days} actividades creadas correctamente`);
+      } else if (formData.scheduledDateStart && formData.scheduledTime) {
+        // Una sola actividad
+        const dataToSend = {
+          ...baseData,
+          scheduledDate: `${formData.scheduledDateStart}T${formData.scheduledTime}`
+        };
+        
+        if (editingActivity) {
+          await activitiesAPI.update(editingActivity._id, dataToSend);
+          Alert.alert('Éxito', 'Actividad actualizada correctamente');
+        } else {
+          await activitiesAPI.create(dataToSend);
+          Alert.alert('Éxito', 'Actividad creada correctamente');
+        }
       } else {
-        await activitiesAPI.create(dataToSend);
-        Alert.alert('Éxito', 'Actividad creada correctamente');
+        Alert.alert('Error', 'Debes seleccionar al menos una fecha y hora');
+        return;
       }
       
       handleCloseModal();
@@ -161,13 +207,8 @@ export default function ActivitiesScreen({ route }) {
   const handleCloseModal = () => {
     setModalVisible(false);
     setEditingActivity(null);
-    setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [], scheduledDate: '', scheduledTime: '' });
+    setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [], scheduledDateStart: '', scheduledDateEnd: '', scheduledTime: '', color: 'blue' });
     setSelectedUsers([]);
-    setDateDay('');
-    setDateMonth('');
-    setDateYear('');
-    setTimeHour('');
-    setTimeMinute('');
   };
 
   const handleEdit = (activity) => {
