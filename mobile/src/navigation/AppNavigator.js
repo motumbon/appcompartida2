@@ -17,6 +17,7 @@ import ComplaintsScreen from '../screens/ComplaintsScreen';
 import ContractsScreen from '../screens/ContractsScreen';
 import StockScreen from '../screens/StockScreen';
 import NotesScreen from '../screens/NotesScreen';
+import RawMaterialsScreen from '../screens/RawMaterialsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -38,6 +39,7 @@ function MainTabs() {
           else if (route.name === 'Contratos') iconName = focused ? 'document-text' : 'document-text-outline';
           else if (route.name === 'Stock') iconName = focused ? 'cube' : 'cube-outline';
           else if (route.name === 'Notas') iconName = focused ? 'document' : 'document-outline';
+          else if (route.name === 'Fichas Técnicas') iconName = focused ? 'flask' : 'flask-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#3b82f6',
@@ -68,6 +70,9 @@ function MainTabs() {
       )}
       {permissions.notes !== false && (
         <Tab.Screen name="Notas" component={NotesScreen} />
+      )}
+      {permissions.rawMaterials !== false && (
+        <Tab.Screen name="Fichas Técnicas" component={RawMaterialsScreen} />
       )}
     </Tab.Navigator>
   );
