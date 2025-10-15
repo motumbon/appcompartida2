@@ -18,10 +18,10 @@ const RawMaterials = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   const categoryStructure = {
-    'Fichas Técnicas': {
+    'IV Drugs': {
       children: [
-        { name: 'Anestesia', parent: 'Fichas Técnicas' },
-        { name: 'Oncología', parent: 'Fichas Técnicas' },
+        { name: 'Anestesia', parent: 'IV Drugs' },
+        { name: 'Oncología', parent: 'IV Drugs' },
       ]
     },
     'Enterales': {
@@ -227,7 +227,7 @@ const RawMaterials = () => {
       {!selectedCategory ? (
         /* Vista de categorías principales */
         <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-2xl font-bold text-center mb-8 text-teal-700">Fichas Técnicas</h2>
+          <h2 className="text-2xl font-bold text-center mb-8 text-blue-700">Fichas Técnicas</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Object.entries(categoryStructure).map(([parentName, { children }]) => (
@@ -239,7 +239,7 @@ const RawMaterials = () => {
                       key={child.name}
                       type="button"
                       onClick={() => handleCategorySelect(child.name, child.parent)}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-left flex items-center justify-between group"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors text-left flex items-center justify-between group"
                     >
                       <span>{child.name}</span>
                       <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />

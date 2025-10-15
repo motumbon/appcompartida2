@@ -12,7 +12,7 @@ const rawMaterialSchema = new mongoose.Schema({
   },
   parentCategory: {
     type: String,
-    enum: ['Fichas Técnicas', 'Enterales', 'Parenterales', null],
+    enum: ['IV Drugs', 'Enterales', 'Parenterales', null],
     default: null
   },
   filename: {
