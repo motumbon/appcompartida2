@@ -157,9 +157,18 @@ const RawMaterials = () => {
     }
   };
 
-  const handleView = (id) => {
-    const viewUrl = rawMaterialsAPI.view(id);
-    window.open(viewUrl, '_blank');
+  const handleView = async (id) => {
+    try {
+      const response = await rawMaterialsAPI.download(id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Limpiar el URL después de un tiempo
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error('Error al ver documento:', error);
+      toast.error('Error al ver documento');
+    }
   };
 
   const handleCategorySelect = (category, parent) => {
