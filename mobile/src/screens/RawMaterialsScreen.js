@@ -126,7 +126,7 @@ export default function RawMaterialsScreen() {
       Alert.alert('Descargando', 'Por favor espera...');
 
       // Obtener token de autenticación
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await SecureStore.getItemAsync('token');
       if (!token) {
         Alert.alert('Error', 'No se pudo autenticar. Por favor inicia sesión nuevamente.');
         return;
