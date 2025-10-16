@@ -1,10 +1,16 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
-// API URL - HARDCODED para garantizar que siempre funcione
-const API_URL = 'https://web-production-10bfc.up.railway.app/api';
+// Configuración de la API URL - Railway siempre usa HTTPS
+const BASE_API_URL = 'https://web-production-10bfc.up.railway.app';
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 
+                Constants.manifest?.extra?.apiUrl || 
+                Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||
+                `${BASE_API_URL}/api`;
 
 console.log('🌐 API URL configurada:', API_URL);
+console.log('🔧 Constants.expoConfig:', Constants.expoConfig);
 
 const api = axios.create({
   baseURL: API_URL,

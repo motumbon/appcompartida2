@@ -82,7 +82,7 @@ class NotificationService {
         console.log('✅ Permisos de notificación otorgados');
         
         // Intentar obtener token de Expo Push Notifications
-        // Si falla, simplemente continuar sin push remoto
+        // Si falla (por falta de Firebase), usar un token local
         try {
           const tokenData = await Notifications.getExpoPushTokenAsync({
             projectId: '00a515c1-6a8f-4c94-9637-f2ca52cf16ca'
@@ -90,15 +90,21 @@ class NotificationService {
           token = tokenData.data;
           console.log('🎫 Token de push obtenido:', token);
           
-          // Registrar token en el backend solo si es válido
-          if (token && token.startsWith('ExponentPushToken[')) {
-            await this.registerTokenWithBackend(token);
-          }
+          // Registrar token en el backend
+          await this.registerTokenWithBackend(token);
         } catch (tokenError) {
-          console.warn('⚠️ Push notifications no disponibles (Firebase no configurado)');
-          console.log('📲 La app funcionará con notificaciones locales únicamente');
-          // No generar token fake - simplemente no usar push remoto
-          token = null;
+          console.warn('⚠️ No se pudo obtener token de Expo (requiere Firebase)');
+          console.log('📲 Usando sistema de notificaciones locales con polling');
+          
+          // Generar un token único simple para este dispositivo
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(2, 15);
+          token = `local-device-${timestamp}-${random}`;
+          
+          console.log('🔑 Token local generado:', token);
+          
+          // Registrar token local en el backend
+          await this.registerTokenWithBackend(token);
         }
       } else {
         console.warn('⚠️ Las notificaciones push requieren un dispositivo físico');
