@@ -9,11 +9,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
-  Platform
+  Platform,
+  PermissionsAndroid
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as SecureStore from 'expo-secure-store';
 import { rawMaterialsAPI } from '../config/api';
 
 export default function RawMaterialsScreen() {
@@ -120,15 +122,66 @@ export default function RawMaterialsScreen() {
     }
   };
 
+  const requestStoragePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Permiso de Almacenamiento',
+            message: 'La aplicación necesita acceso al almacenamiento para descargar archivos PDF.',
+            buttonNeutral: 'Preguntar Después',
+            buttonNegative: 'Cancelar',
+            buttonPositive: 'Permitir',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true; // iOS no requiere este permiso
+  };
+
   const handleDownload = async (doc, openAfterDownload = false) => {
     try {
+      // Solicitar permisos primero
+      const hasPermission = await requestStoragePermission();
+      if (!hasPermission) {
+        Alert.alert(
+          'Permiso Requerido',
+          'Necesitas otorgar permiso de almacenamiento para descargar archivos.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Configuración', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+
       Alert.alert('Descargando', 'Por favor espera...');
 
-      const fileUri = `${FileSystem.documentDirectory}${doc.originalName}`;
+      // Obtener token de autenticación
+      const token = await SecureStore.getItemAsync('userToken');
+      if (!token) {
+        Alert.alert('Error', 'No se pudo autenticar. Por favor inicia sesión nuevamente.');
+        return;
+      }
+
+      // Crear ruta de archivo con nombre limpio
+      const fileName = doc.originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      // Descargar con headers de autenticación
       const downloadResumable = FileSystem.createDownloadResumable(
         rawMaterialsAPI.getViewUrl(doc._id),
         fileUri,
-        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        },
         (downloadProgress) => {
           const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
           console.log(`Progreso: ${(progress * 100).toFixed(0)}%`);
@@ -138,24 +191,32 @@ export default function RawMaterialsScreen() {
       const result = await downloadResumable.downloadAsync();
       
       if (result) {
-        Alert.alert(
-          'Éxito',
-          `Documento descargado: ${doc.originalName}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (openAfterDownload) {
-                  openDocument(result.uri);
+        // Verificar que el archivo se descargó correctamente
+        const fileInfo = await FileSystem.getInfoAsync(result.uri);
+        console.log('Archivo descargado:', fileInfo);
+        
+        if (fileInfo.exists && fileInfo.size > 1000) {
+          Alert.alert(
+            'Éxito',
+            `Documento descargado: ${doc.originalName}`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  if (openAfterDownload) {
+                    openDocument(result.uri);
+                  }
                 }
               }
-            }
-          ]
-        );
+            ]
+          );
+        } else {
+          Alert.alert('Error', 'El archivo descargado parece estar dañado o vacío');
+        }
       }
     } catch (error) {
       console.error('Error al descargar:', error);
-      Alert.alert('Error', 'No se pudo descargar el documento');
+      Alert.alert('Error', `No se pudo descargar el documento: ${error.message}`);
     }
   };
 

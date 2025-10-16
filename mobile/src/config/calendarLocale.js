@@ -48,7 +48,8 @@ LocaleConfig.locales['es'] = {
     'Vie',
     'Sáb'
   ],
-  today: 'Hoy'
+  today: 'Hoy',
+  firstDayOfWeek: 1 // La semana empieza con Lunes
 };
 
 LocaleConfig.defaultLocale = 'es';

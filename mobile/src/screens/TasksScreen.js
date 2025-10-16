@@ -18,6 +18,7 @@ export default function TasksScreen({ route }) {
   const [viewMode, setViewMode] = useState('pending'); // 'pending', 'completed', 'assigned'
   const [filterInstitution, setFilterInstitution] = useState('all');
   const [filterUser, setFilterUser] = useState('all');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [userInstitutions, setUserInstitutions] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -484,41 +485,16 @@ export default function TasksScreen({ route }) {
             </Text>
           </TouchableOpacity>
         </ScrollView>
-      </View>
-
-      {/* Filtros Adicionales */}
-      <View style={styles.additionalFiltersContainer}>
-        <Text style={styles.filtersTitle}>Filtros</Text>
         
-        {/* Filtro por Institución */}
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Institución:</Text>
-          <Picker
-            selectedValue={filterInstitution}
-            onValueChange={(value) => setFilterInstitution(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="🏢 Todas las instituciones" value="all" />
-            {getInstitutionsWithTasks().map((inst) => (
-              <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
-            ))}
-          </Picker>
-        </View>
-
-        {/* Filtro por Usuario */}
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Usuario Compartido:</Text>
-          <Picker
-            selectedValue={filterUser}
-            onValueChange={(value) => setFilterUser(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="👥 Todos los usuarios" value="all" />
-            {getUsersWithSharedTasks().map((u) => (
-              <Picker.Item key={u._id} label={u.name} value={u._id} />
-            ))}
-          </Picker>
-        </View>
+        <TouchableOpacity
+          style={styles.filterIconButton}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Ionicons name="filter" size={20} color="#3b82f6" />
+          {(filterUser !== 'all' || filterInstitution !== 'all') && (
+            <View style={styles.filterBadge} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -664,6 +640,75 @@ export default function TasksScreen({ route }) {
                   <Text style={styles.buttonSubmitText}>{editingTask ? 'Actualizar' : 'Crear'}</Text>
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Filtros */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={filterModalVisible}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtros</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalForm}>
+              <Text style={styles.label}>Filtrar por institución</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filterInstitution}
+                  onValueChange={(value) => setFilterInstitution(value)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="🏢 Todas las instituciones" value="all" />
+                  {getInstitutionsWithTasks().map((inst) => (
+                    <Picker.Item key={inst._id} label={inst.name} value={inst._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Filtrar por usuario compartido</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filterUser}
+                  onValueChange={(value) => setFilterUser(value)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="👥 Todos los usuarios" value="all" />
+                  {getUsersWithSharedTasks().map((u) => (
+                    <Picker.Item key={u._id} label={u.name} value={u._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSubmit, { marginTop: 20 }]}
+                onPress={() => {
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.buttonSubmitText}>Aplicar Filtros</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.buttonCancel, { marginTop: 10 }]}
+                onPress={() => {
+                  setFilterUser('all');
+                  setFilterInstitution('all');
+                  setFilterModalVisible(false);
+                }}
+              >
+                <Text style={styles.buttonCancelText}>Limpiar Filtros</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -877,6 +922,8 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -968,18 +1015,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  additionalFiltersContainer: {
-    backgroundColor: '#fff',
-    padding: 12,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+  filterIconButton: {
+    padding: 8,
+    marginRight: 16,
+    position: 'relative',
   },
-  filtersTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 12,
+  filterBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
   },
   pickerContainer: {
     marginBottom: 12,

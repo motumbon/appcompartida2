@@ -540,6 +540,7 @@ export default function ActivitiesScreen({ route }) {
             markedDates={getMarkedDates()}
             onDayPress={handleDayPress}
             markingType={'multi-dot'}
+            firstDay={1}
             theme={{
               todayTextColor: '#3b82f6',
               selectedDayBackgroundColor: '#3b82f6',

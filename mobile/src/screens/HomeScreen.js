@@ -567,6 +567,7 @@ export default function HomeScreen() {
             current={selectedDate}
             onDayPress={(day) => setSelectedDate(day.dateString)}
             markedDates={getMarkedDates()}
+            firstDay={1}
             theme={{
               todayTextColor: '#3b82f6',
               selectedDayBackgroundColor: '#3b82f6',
