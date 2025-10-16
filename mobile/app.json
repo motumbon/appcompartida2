@@ -2,7 +2,7 @@
   "expo": {
     "name": "App Trabajo en Terreno",
     "slug": "app-trabajo-terreno-mobile",
-    "version": "1.8.3",
+    "version": "1.8.4",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 35,
+      "versionCode": 36,
       "usesCleartextTraffic": true,
       "permissions": [
         "INTERNET",
@@ -40,7 +40,6 @@
     },
     "web": {},
     "extra": {
-      "apiUrl": "https://web-production-10bfc.up.railway.app/api",
       "eas": {
         "projectId": "00a515c1-6a8f-4c94-9637-f2ca52cf16ca"
       }
