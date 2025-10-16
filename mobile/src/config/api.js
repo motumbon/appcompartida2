@@ -3,14 +3,37 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
 // Configuración de la API URL - Railway siempre usa HTTPS
-const BASE_API_URL = 'https://web-production-10bfc.up.railway.app';
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 
-                Constants.manifest?.extra?.apiUrl || 
-                Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||
-                `${BASE_API_URL}/api`;
+const BASE_API_URL = 'https://web-production-10bfc.up.railway.app/api';
 
-console.log('🌐 API URL configurada:', API_URL);
-console.log('🔧 Constants.expoConfig:', Constants.expoConfig);
+// Intentar obtener API URL de múltiples fuentes
+let API_URL = BASE_API_URL;
+
+try {
+  // Intentar desde expoConfig (builds modernos)
+  if (Constants.expoConfig?.extra?.apiUrl) {
+    API_URL = Constants.expoConfig.extra.apiUrl;
+    console.log('✅ API URL desde expoConfig:', API_URL);
+  }
+  // Intentar desde manifest (builds clásicos)
+  else if (Constants.manifest?.extra?.apiUrl) {
+    API_URL = Constants.manifest.extra.apiUrl;
+    console.log('✅ API URL desde manifest:', API_URL);
+  }
+  // Intentar desde manifest2 (SDK 46+)
+  else if (Constants.manifest2?.extra?.expoClient?.extra?.apiUrl) {
+    API_URL = Constants.manifest2.extra.expoClient.extra.apiUrl;
+    console.log('✅ API URL desde manifest2:', API_URL);
+  }
+  // Usar URL base por defecto
+  else {
+    console.log('⚠️ Usando API URL por defecto:', API_URL);
+  }
+} catch (error) {
+  console.error('⚠️ Error obteniendo API URL, usando default:', error);
+  API_URL = BASE_API_URL;
+}
+
+console.log('🌐 API URL FINAL:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,

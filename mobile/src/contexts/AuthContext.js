@@ -33,9 +33,12 @@ export const AuthProvider = ({ children }) => {
   const registerPushToken = async () => {
     try {
       console.log('🔔 Registrando token de notificaciones push...');
+      // No bloquear si falla - las notificaciones son opcionales
       await notificationService.registerForPushNotifications();
+      console.log('✅ Push token registrado correctamente');
     } catch (error) {
-      console.error('Error registrando push token:', error);
+      console.warn('⚠️ No se pudo registrar push token (no crítico):', error.message);
+      // No hacer nada - la app puede funcionar sin notificaciones push
     }
   };
 
