@@ -65,9 +65,9 @@ export default function ActivitiesScreen({ route }) {
         if (date) {
           // Pre-configurar fecha
           const [year, month, day] = date.split('-');
-          setDateYear(year);
-          setDateMonth(month);
-          setDateDay(day);
+          setStartDateYear(year);
+          setStartDateMonth(month);
+          setStartDateDay(day);
         }
         // Limpiar parámetro
         route.params.openModal = undefined;
@@ -225,6 +225,15 @@ export default function ActivitiesScreen({ route }) {
     setEditingActivity(null);
     setFormData({ subject: '', comment: '', status: 'pendiente', institution: '', sharedWith: [], scheduledDateStart: '', scheduledDateEnd: '', scheduledTime: '', color: 'blue' });
     setSelectedUsers([]);
+    // Limpiar campos de fecha y hora
+    setStartDateDay('');
+    setStartDateMonth('');
+    setStartDateYear('');
+    setEndDateDay('');
+    setEndDateMonth('');
+    setEndDateYear('');
+    setTimeHour('');
+    setTimeMinute('');
   };
 
   const handleEdit = (activity) => {
@@ -232,12 +241,12 @@ export default function ActivitiesScreen({ route }) {
     const scheduledDate = activity.scheduledDate ? activity.scheduledDate.split('T')[0] : '';
     const scheduledTime = activity.scheduledDate ? activity.scheduledDate.split('T')[1]?.substring(0, 5) : '';
     
-    // Parsear fecha
+    // Parsear fecha de inicio
     if (scheduledDate) {
       const [year, month, day] = scheduledDate.split('-');
-      setDateYear(year);
-      setDateMonth(month);
-      setDateDay(day);
+      setStartDateYear(year);
+      setStartDateMonth(month);
+      setStartDateDay(day);
     }
     
     // Parsear hora
@@ -253,8 +262,9 @@ export default function ActivitiesScreen({ route }) {
       status: activity.status,
       institution: activity.institution?._id || '',
       sharedWith: activity.sharedWith?.map(u => u._id) || [],
-      scheduledDate: scheduledDate,
-      scheduledTime: scheduledTime
+      scheduledDateStart: scheduledDate,
+      scheduledTime: scheduledTime,
+      color: activity.color || 'blue'
     });
     setSelectedUsers(activity.sharedWith?.map(u => u._id) || []);
     setModalVisible(true);
