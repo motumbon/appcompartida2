@@ -9,8 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
-  Platform,
-  PermissionsAndroid
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -122,44 +121,8 @@ export default function RawMaterialsScreen() {
     }
   };
 
-  const requestStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Permiso de Almacenamiento',
-            message: 'La aplicación necesita acceso al almacenamiento para descargar archivos PDF.',
-            buttonNeutral: 'Preguntar Después',
-            buttonNegative: 'Cancelar',
-            buttonPositive: 'Permitir',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true; // iOS no requiere este permiso
-  };
-
   const handleDownload = async (doc, openAfterDownload = false) => {
     try {
-      // Solicitar permisos primero
-      const hasPermission = await requestStoragePermission();
-      if (!hasPermission) {
-        Alert.alert(
-          'Permiso Requerido',
-          'Necesitas otorgar permiso de almacenamiento para descargar archivos.',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Configuración', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return;
-      }
-
       Alert.alert('Descargando', 'Por favor espera...');
 
       // Obtener token de autenticación
