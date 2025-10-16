@@ -399,12 +399,20 @@ export default function ActivitiesScreen({ route }) {
   const openNewActivityFromCalendar = () => {
     if (selectedDate) {
       const [year, month, day] = selectedDate.split('-');
-      setDateYear(year);
-      setDateMonth(month);
-      setDateDay(day);
+      setStartDateYear(year);
+      setStartDateMonth(month);
+      setStartDateDay(day);
+      setEndDateYear(year);
+      setEndDateMonth(month);
+      setEndDateDay(day);
       setTimeHour('09');
       setTimeMinute('00');
-      setFormData({ ...formData, scheduledDate: selectedDate, scheduledTime: '09:00' });
+      setFormData({ 
+        ...formData, 
+        scheduledDateStart: selectedDate, 
+        scheduledDateEnd: selectedDate, 
+        scheduledTime: '09:00' 
+      });
     }
     setModalVisible(true);
   };
