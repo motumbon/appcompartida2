@@ -2,7 +2,7 @@
   "expo": {
     "name": "App Trabajo en Terreno",
     "slug": "app-trabajo-terreno-mobile",
-    "version": "1.8.5",
+    "version": "1.8.6",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.apptrabajoenterreno.mobile",
-      "versionCode": 37,
+      "versionCode": 38,
       "permissions": [
         "INTERNET",
         "POST_NOTIFICATIONS"
@@ -51,6 +51,15 @@
           "icon": "./assets/icon.png",
           "color": "#3b82f6",
           "mode": "production"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "networkInspector": true,
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
