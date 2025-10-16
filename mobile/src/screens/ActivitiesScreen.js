@@ -154,6 +154,22 @@ export default function ActivitiesScreen({ route }) {
         color: formData.color || 'blue'
       };
 
+      // Función helper para crear fecha con timezone local
+      const createLocalDateTimeString = (dateStr, timeStr) => {
+        // Crear fecha en hora local
+        const [hours, minutes] = timeStr.split(':');
+        const localDate = new Date(`${dateStr}T${hours}:${minutes}:00`);
+        
+        // Obtener offset de timezone en minutos y convertir a formato +HH:MM
+        const offset = -localDate.getTimezoneOffset();
+        const offsetHours = Math.floor(Math.abs(offset) / 60).toString().padStart(2, '0');
+        const offsetMinutes = (Math.abs(offset) % 60).toString().padStart(2, '0');
+        const offsetSign = offset >= 0 ? '+' : '-';
+        
+        // Retornar fecha en formato ISO con timezone explícito
+        return `${dateStr}T${hours}:${minutes}:00${offsetSign}${offsetHours}:${offsetMinutes}`;
+      };
+
       // Si hay rango de fechas, crear múltiples actividades
       if (formData.scheduledDateStart && formData.scheduledDateEnd && formData.scheduledTime) {
         const start = new Date(formData.scheduledDateStart);
@@ -170,7 +186,7 @@ export default function ActivitiesScreen({ route }) {
           const dateStr = date.toISOString().split('T')[0];
           const dataToSend = {
             ...baseData,
-            scheduledDate: `${dateStr}T${formData.scheduledTime}`
+            scheduledDate: createLocalDateTimeString(dateStr, formData.scheduledTime)
           };
           promises.push(activitiesAPI.create(dataToSend));
         }
@@ -182,7 +198,7 @@ export default function ActivitiesScreen({ route }) {
         // Una sola actividad
         const dataToSend = {
           ...baseData,
-          scheduledDate: `${formData.scheduledDateStart}T${formData.scheduledTime}`
+          scheduledDate: createLocalDateTimeString(formData.scheduledDateStart, formData.scheduledTime)
         };
         
         if (editingActivity) {
