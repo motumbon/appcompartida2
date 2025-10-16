@@ -133,7 +133,7 @@ export default function ActivitiesScreen({ route }) {
 
   useEffect(() => {
     if (timeHour && timeMinute !== '') {
-      const newTime = `${timeHour.padStart(2, '0')}:${timeMinute.padStart(2, '0')}`;
+      const newTime = `${timeHour}:${timeMinute}`;
       setFormData(prev => ({ ...prev, scheduledTime: newTime }));
     }
   }, [timeHour, timeMinute]);
@@ -238,22 +238,33 @@ export default function ActivitiesScreen({ route }) {
 
   const handleEdit = (activity) => {
     setEditingActivity(activity);
-    const scheduledDate = activity.scheduledDate ? activity.scheduledDate.split('T')[0] : '';
-    const scheduledTime = activity.scheduledDate ? activity.scheduledDate.split('T')[1]?.substring(0, 5) : '';
     
-    // Parsear fecha de inicio
-    if (scheduledDate) {
-      const [year, month, day] = scheduledDate.split('-');
-      setStartDateYear(year);
+    // Convertir a fecha local para extraer correctamente fecha y hora
+    let scheduledDateStr = '';
+    let scheduledTimeStr = '';
+    
+    if (activity.scheduledDate) {
+      const localDate = new Date(activity.scheduledDate);
+      
+      // Extraer fecha en formato YYYY-MM-DD
+      const year = localDate.getFullYear();
+      const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = localDate.getDate().toString().padStart(2, '0');
+      scheduledDateStr = `${year}-${month}-${day}`;
+      
+      // Extraer hora en formato HH:MM (hora local)
+      const hours = localDate.getHours().toString().padStart(2, '0');
+      const minutes = localDate.getMinutes().toString().padStart(2, '0');
+      scheduledTimeStr = `${hours}:${minutes}`;
+      
+      // Parsear fecha para los campos individuales
+      setStartDateYear(year.toString());
       setStartDateMonth(month);
       setStartDateDay(day);
-    }
-    
-    // Parsear hora
-    if (scheduledTime) {
-      const [hour, minute] = scheduledTime.split(':');
-      setTimeHour(hour);
-      setTimeMinute(minute);
+      
+      // Parsear hora para los campos individuales
+      setTimeHour(hours);
+      setTimeMinute(minutes);
     }
     
     setFormData({
@@ -262,8 +273,8 @@ export default function ActivitiesScreen({ route }) {
       status: activity.status,
       institution: activity.institution?._id || '',
       sharedWith: activity.sharedWith?.map(u => u._id) || [],
-      scheduledDateStart: scheduledDate,
-      scheduledTime: scheduledTime,
+      scheduledDateStart: scheduledDateStr,
+      scheduledTime: scheduledTimeStr,
       color: activity.color || 'blue'
     });
     setSelectedUsers(activity.sharedWith?.map(u => u._id) || []);
@@ -833,9 +844,10 @@ export default function ActivitiesScreen({ route }) {
                     style={styles.picker}
                   >
                     <Picker.Item label="Hora" value="" />
-                    {Array.from({length: 24}, (_, i) => i).map(hour => (
-                      <Picker.Item key={hour} label={String(hour).padStart(2, '0')} value={String(hour)} />
-                    ))}
+                    {Array.from({length: 24}, (_, i) => i).map(hour => {
+                      const hourStr = String(hour).padStart(2, '0');
+                      return <Picker.Item key={hour} label={hourStr} value={hourStr} />;
+                    })}
                   </Picker>
                 </View>
                 <View style={[styles.pickerContainer, { flex: 1, marginLeft: 8 }]}>
@@ -845,10 +857,10 @@ export default function ActivitiesScreen({ route }) {
                     style={styles.picker}
                   >
                     <Picker.Item label="Min" value="" />
-                    <Picker.Item label="00" value="0" />
-                    <Picker.Item label="15" value="15" />
-                    <Picker.Item label="30" value="30" />
-                    <Picker.Item label="45" value="45" />
+                    {Array.from({length: 60}, (_, i) => i).map(minute => {
+                      const minuteStr = String(minute).padStart(2, '0');
+                      return <Picker.Item key={minute} label={minuteStr} value={minuteStr} />;
+                    })}
                   </Picker>
                 </View>
               </View>
